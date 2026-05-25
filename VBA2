@@ -1,0 +1,885 @@
+Option Explicit
+
+' ============================================================
+' COMPLETE REPO DASHBOARD — SINGLE MODULE
+' Instructions:
+' 1. Delete ALL existing modules
+' 2. Make sure Sheet1 (Trade Data) code window is EMPTY
+' 3. Insert ONE new Module (Insert > Module)
+' 4. Paste this entire file
+' 5. Press Option+F8, select RunFullSetup, click Run
+' ============================================================
+
+' ---- CONSTANTS — adjust column numbers if needed ----
+' Column A=1, B=2, C=3 etc.
+Dim SRC_SHEET       As String
+Dim DASH_SHEET      As String
+Dim RATES_SHEET     As String
+Dim CONTROL_SHEET   As String
+Dim DRILLDOWN_SHEET As String
+Dim COL_CPTY        As Integer
+Dim COL_CATEGORY    As Integer
+Dim COL_TRANTYPE    As Integer
+Dim COL_FACE        As Integer
+Dim COL_PRINCIPAL   As Integer
+Dim COL_RATE        As Integer
+
+Sub InitConstants()
+    SRC_SHEET       = "Trade Data"
+    DASH_SHEET      = "Dashboard"
+    RATES_SHEET     = "Benchmark Rates"
+    CONTROL_SHEET   = "Control Panel"
+    DRILLDOWN_SHEET = "Trade Drill-Down"
+    COL_CPTY        = 1
+    COL_CATEGORY    = 2
+    COL_TRANTYPE    = 3
+    COL_FACE        = 4
+    COL_PRINCIPAL   = 5
+    COL_RATE        = 6
+End Sub
+
+' ============================================================
+' MASTER SETUP — RUN THIS FIRST
+' ============================================================
+Sub RunFullSetup()
+    Call InitConstants
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+
+    Call BuildRatesSheet
+    Call BuildControlPanel
+    Call BuildDashboard
+    Call BuildDrillDown
+
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+
+    MsgBox "Dashboard built successfully! Go to Control Panel sheet.", vbInformation, "Done"
+End Sub
+
+Sub RefreshDashboard()
+    Call InitConstants
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+
+    Call BuildDashboard
+    Call BuildDrillDown
+
+    Application.Calculation = xlCalculationAutomatic
+    Application.ScreenUpdating = True
+    MsgBox "Refreshed!", vbInformation, "Done"
+End Sub
+
+' ============================================================
+' BENCHMARK RATES SHEET
+' ============================================================
+Sub BuildRatesSheet()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    ThisWorkbook.Sheets(RATES_SHEET).Delete
+    Application.DisplayAlerts = True
+    On Error GoTo 0
+
+    Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+    ws.Name = RATES_SHEET
+
+    With ws.Range("A1:F1")
+        .Value = Array("Rate Name", "Ticker", "Rate (%)", "Source", "Updated", "Notes")
+        .Font.Bold = True
+        .Font.Color = RGB(255, 255, 255)
+        .Interior.Color = RGB(0, 51, 102)
+        .HorizontalAlignment = xlCenter
+    End With
+
+    Dim r As Integer
+    Dim data As Variant
+    data = Array( _
+        Array("SOFR",          "SOFR Index",     0.053,  "Bloomberg", "Manual", "Secured Overnight Financing Rate"), _
+        Array("SOFR+3",        "SOFR Index",     0.0533, "Bloomberg", "Manual", "SOFR + 3bps"), _
+        Array("SOFR+4",        "SOFR Index",     0.0534, "Bloomberg", "Manual", "SOFR + 4bps"), _
+        Array("SOFR+10",       "SOFR Index",     0.054,  "Bloomberg", "Manual", "SOFR + 10bps"), _
+        Array("Fed Funds",     "FEDL01 Index",   0.0533, "Bloomberg", "Manual", "Effective Fed Funds"), _
+        Array("SONIA",         "SONIO/N Index",  0.052,  "Bloomberg", "Manual", "Sterling Overnight Index"), _
+        Array("UST GC Rate",   "USGG10YR Index", 0.045,  "Bloomberg", "Manual", "UST General Collateral"), _
+        Array("CME UST Repo",  "CMEUST Index",   0.0531, "Bloomberg", "Manual", "CME UST Repo Reference"), _
+        Array("CME Gilt Repo", "CMEGILT Index",  0.0515, "Bloomberg", "Manual", "CME Gilt Repo Reference") _
+    )
+
+    For r = 0 To UBound(data)
+        ws.Cells(r + 2, 1).Value = data(r)(0)
+        ws.Cells(r + 2, 2).Value = data(r)(1)
+        ws.Cells(r + 2, 3).Value = data(r)(2)
+        ws.Cells(r + 2, 3).NumberFormat = "0.000%"
+        ws.Cells(r + 2, 4).Value = data(r)(3)
+        ws.Cells(r + 2, 5).Value = data(r)(4)
+        ws.Cells(r + 2, 6).Value = data(r)(5)
+    Next r
+
+    ws.Range("A12").Value = "To use Bloomberg: replace Column C with =BDP(""SOFR Index"",""PX_LAST"")/100"
+    ws.Range("A12").Font.Color = RGB(180, 0, 0)
+    ws.Columns("A:F").AutoFit
+    ws.Tab.Color = RGB(0, 112, 192)
+End Sub
+
+' ============================================================
+' CONTROL PANEL SHEET
+' ============================================================
+Sub BuildControlPanel()
+    Dim ws As Worksheet
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    ThisWorkbook.Sheets(CONTROL_SHEET).Delete
+    Application.DisplayAlerts = True
+    On Error GoTo 0
+
+    Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(1))
+    ws.Name = CONTROL_SHEET
+    ws.Cells.Interior.Color = RGB(15, 23, 42)
+    ws.Cells.Font.Color = RGB(226, 232, 240)
+
+    With ws.Range("B2:L2")
+        .Merge
+        .Value = "REPO / REVERSE REPO TRADE ANALYTICS DASHBOARD"
+        .Font.Size = 18
+        .Font.Bold = True
+        .Font.Color = RGB(96, 165, 250)
+        .HorizontalAlignment = xlCenter
+    End With
+
+    With ws.Range("B3:L3")
+        .Merge
+        .Value = "Control Panel — Run Setup, Refresh Data, Send Email"
+        .Font.Size = 11
+        .Font.Color = RGB(148, 163, 184)
+        .HorizontalAlignment = xlCenter
+    End With
+
+    ws.Range("B4:L4").Interior.Color = RGB(30, 58, 138)
+
+    ' KPI labels
+    With ws.Range("B6:L6")
+        .Merge
+        .Value = "KPI SUMMARY (click Refresh All to update)"
+        .Font.Bold = True
+        .Font.Color = RGB(52, 211, 153)
+        .Interior.Color = RGB(6, 78, 59)
+        .HorizontalAlignment = xlCenter
+    End With
+
+    ' KPI boxes
+    Call MakeKPIBox(ws, 7, 2, "TOTAL REPO FACE", RGB(30, 64, 175))
+    Call MakeKPIBox(ws, 7, 5, "TOTAL REV REPO FACE", RGB(127, 29, 29))
+    Call MakeKPIBox(ws, 7, 8, "NET POSITION", RGB(6, 78, 59))
+    Call MakeKPIBox(ws, 7, 11, "AVG RATE", RGB(92, 45, 145))
+
+    ' Action buttons
+    With ws.Range("B10:L10")
+        .Merge
+        .Value = "ACTIONS"
+        .Font.Bold = True
+        .Font.Color = RGB(251, 191, 36)
+        .Interior.Color = RGB(120, 53, 15)
+        .HorizontalAlignment = xlCenter
+    End With
+
+    Call AddBtn(ws, "REFRESH ALL DATA", "RefreshDashboard", 11, 2, RGB(37, 99, 235))
+    Call AddBtn(ws, "VIEW DASHBOARD", "GoToDashboard", 11, 5, RGB(5, 150, 105))
+    Call AddBtn(ws, "TRADE DRILL-DOWN", "GoToDrillDown", 11, 8, RGB(124, 58, 237))
+    Call AddBtn(ws, "FORMAT EMAIL", "FormatOutlookEmail", 11, 11, RGB(220, 38, 38))
+
+    ws.Columns("A:M").AutoFit
+    ws.Tab.Color = RGB(59, 130, 246)
+End Sub
+
+Sub MakeKPIBox(ws As Worksheet, r As Integer, c As Integer, lbl As String, bg As Long)
+    With ws.Range(ws.Cells(r, c), ws.Cells(r, c + 2))
+        .Merge
+        .Value = lbl
+        .Font.Size = 9
+        .Font.Bold = True
+        .Font.Color = RGB(148, 163, 184)
+        .Interior.Color = bg
+        .HorizontalAlignment = xlCenter
+    End With
+    With ws.Range(ws.Cells(r + 1, c), ws.Cells(r + 1, c + 2))
+        .Merge
+        .Value = "Run Refresh"
+        .Font.Size = 13
+        .Font.Bold = True
+        .Font.Color = RGB(255, 255, 255)
+        .Interior.Color = bg
+        .HorizontalAlignment = xlCenter
+    End With
+End Sub
+
+Sub AddBtn(ws As Worksheet, cap As String, mac As String, rw As Integer, cl As Integer, bg As Long)
+    Dim t As Double, l As Double, w As Double, h As Double
+    t = ws.Rows(rw).Top + 3
+    l = ws.Columns(cl).Left + 3
+    w = ws.Columns(cl).Width + ws.Columns(cl + 1).Width + ws.Columns(cl + 2).Width - 6
+    h = ws.Rows(rw).Height + ws.Rows(rw + 1).Height - 6
+
+    Dim s As Shape
+    Set s = ws.Shapes.AddShape(msoShapeRoundedRectangle, l, t, w, h)
+    With s
+        .Fill.ForeColor.RGB = bg
+        .Line.ForeColor.RGB = RGB(255, 255, 255)
+        .TextFrame2.TextRange.Text = cap
+        .TextFrame2.TextRange.Font.Bold = True
+        .TextFrame2.TextRange.Font.Size = 11
+        .TextFrame2.TextRange.Font.Fill.ForeColor.RGB = RGB(255, 255, 255)
+        .TextFrame.HorizontalAlignment = xlHAlignCenter
+        .TextFrame.VerticalAlignment = xlVAlignCenter
+        .OnAction = mac
+    End With
+End Sub
+
+' ============================================================
+' DASHBOARD SHEET
+' ============================================================
+Sub BuildDashboard()
+    Call InitConstants
+    Dim wsSrc As Worksheet, wsDash As Worksheet, wsRates As Worksheet
+
+    If Not SheetExists(SRC_SHEET) Then
+        MsgBox "Cannot find sheet named '" & SRC_SHEET & "'", vbCritical
+        Exit Sub
+    End If
+
+    Set wsSrc = ThisWorkbook.Sheets(SRC_SHEET)
+    Set wsRates = ThisWorkbook.Sheets(RATES_SHEET)
+
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    ThisWorkbook.Sheets(DASH_SHEET).Delete
+    Application.DisplayAlerts = True
+    On Error GoTo 0
+
+    Dim addAfter As Worksheet
+    Set addAfter = ThisWorkbook.Sheets(CONTROL_SHEET)
+    Set wsDash = ThisWorkbook.Sheets.Add(After:=addAfter)
+    wsDash.Name = DASH_SHEET
+    wsDash.Cells.Interior.Color = RGB(15, 23, 42)
+    wsDash.Cells.Font.Color = RGB(226, 232, 240)
+
+    With wsDash.Range("A1:K1")
+        .Merge
+        .Value = "REPO / REVERSE REPO ANALYTICS — " & Format(Date, "dd-mmm-yyyy")
+        .Font.Size = 14
+        .Font.Bold = True
+        .Font.Color = RGB(96, 165, 250)
+        .HorizontalAlignment = xlCenter
+    End With
+
+    Dim lastRow As Long
+    lastRow = wsSrc.Cells(wsSrc.Rows.Count, 1).End(xlUp).Row
+    If lastRow < 2 Then
+        wsDash.Range("A3").Value = "No data found in Trade Data sheet."
+        Exit Sub
+    End If
+
+    Dim dataArr As Variant
+    dataArr = wsSrc.Range(wsSrc.Cells(2, 1), wsSrc.Cells(lastRow, COL_RATE)).Value
+
+    ' ---- Compute KPIs ----
+    Dim totalRepo As Double, totalRR As Double
+    Dim rateSum As Double, rateCnt As Long
+    Dim i As Long
+
+    For i = 1 To UBound(dataArr, 1)
+        Dim tt As String, fc As Double, rt As Double
+        tt = UCase(Trim(CStr(dataArr(i, COL_TRANTYPE))))
+        fc = 0: rt = 0
+        On Error Resume Next
+        fc = CDbl(dataArr(i, COL_FACE))
+        rt = CDbl(dataArr(i, COL_RATE))
+        On Error GoTo 0
+        If tt = "REPO" Then totalRepo = totalRepo + fc
+        If tt = "RR" Or InStr(tt, "REVERSE") > 0 Then totalRR = totalRR + fc
+        If rt <> 0 Then rateSum = rateSum + rt: rateCnt = rateCnt + 1
+    Next i
+
+    Dim avgRt As Double
+    If rateCnt > 0 Then avgRt = rateSum / rateCnt
+
+    ' KPI row
+    Call DashKPI(wsDash, 3, 1, "TOTAL REPO FACE", totalRepo, RGB(30, 64, 175), "#,##0")
+    Call DashKPI(wsDash, 3, 4, "TOTAL REV REPO FACE", totalRR, RGB(127, 29, 29), "#,##0")
+    Call DashKPI(wsDash, 3, 7, "NET POSITION", totalRepo - totalRR, RGB(6, 78, 59), "#,##0")
+    Call DashKPI(wsDash, 3, 10, "AVG RATE", avgRt, RGB(92, 45, 145), "0.000%")
+
+    ' ---- Summary table header ----
+    Dim hRow As Integer
+    hRow = 7
+    With wsDash.Cells(hRow - 1, 1)
+        .Value = "TRADE SUMMARY — Bucketed by Counterparty > Category > Transaction Type"
+        .Font.Bold = True
+        .Font.Color = RGB(52, 211, 153)
+    End With
+
+    Dim hdrs As Variant
+    hdrs = Array("Counterparty", "Category", "Tran Type", "Total Face", "Total Principal", "Avg Rate", "Benchmark", "Spread (bps)", "Status")
+    Dim h As Integer
+    For h = 0 To UBound(hdrs)
+        With wsDash.Cells(hRow, h + 1)
+            .Value = hdrs(h)
+            .Font.Bold = True
+            .Font.Color = RGB(255, 255, 255)
+            .Interior.Color = RGB(0, 51, 102)
+            .HorizontalAlignment = xlCenter
+        End With
+    Next h
+
+    ' ---- Aggregate ----
+    Dim keys(200) As String
+    Dim faces(200) As Double
+    Dim principals(200) As Double
+    Dim rateSums(200) As Double
+    Dim rateCounts(200) As Long
+    Dim kc As Long
+    kc = 0
+
+    For i = 1 To UBound(dataArr, 1)
+        Dim cp As String, ca As String, ty As String
+        Dim fv As Double, pv As Double, rv As Double
+        cp = Trim(CStr(dataArr(i, COL_CPTY)))
+        ca = Trim(CStr(dataArr(i, COL_CATEGORY)))
+        ty = Trim(CStr(dataArr(i, COL_TRANTYPE)))
+        fv = 0: pv = 0: rv = 0
+        On Error Resume Next
+        fv = CDbl(dataArr(i, COL_FACE))
+        pv = CDbl(dataArr(i, COL_PRINCIPAL))
+        rv = CDbl(dataArr(i, COL_RATE))
+        On Error GoTo 0
+        If fv = 0 Then GoTo SkipRow
+
+        Dim key As String
+        key = cp & "|" & ca & "|" & ty
+        Dim found As Boolean: found = False
+        Dim j As Long
+        For j = 0 To kc - 1
+            If keys(j) = key Then
+                faces(j) = faces(j) + fv
+                principals(j) = principals(j) + pv
+                rateSums(j) = rateSums(j) + rv
+                rateCounts(j) = rateCounts(j) + 1
+                found = True: Exit For
+            End If
+        Next j
+        If Not found Then
+            keys(kc) = key
+            faces(kc) = fv
+            principals(kc) = pv
+            rateSums(kc) = rv
+            rateCounts(kc) = 1
+            kc = kc + 1
+        End If
+SkipRow:
+    Next i
+
+    ' Sort by key
+    Dim si As Long, sj As Long
+    Dim tmpS As String, tmpD As Double, tmpL As Long
+    For si = 0 To kc - 2
+        For sj = 0 To kc - 2 - si
+            If keys(sj) > keys(sj + 1) Then
+                tmpS = keys(sj): keys(sj) = keys(sj + 1): keys(sj + 1) = tmpS
+                tmpD = faces(sj): faces(sj) = faces(sj + 1): faces(sj + 1) = tmpD
+                tmpD = principals(sj): principals(sj) = principals(sj + 1): principals(sj + 1) = tmpD
+                tmpD = rateSums(sj): rateSums(sj) = rateSums(sj + 1): rateSums(sj + 1) = tmpD
+                tmpL = rateCounts(sj): rateCounts(sj) = rateCounts(sj + 1): rateCounts(sj + 1) = tmpL
+            End If
+        Next sj
+    Next si
+
+    ' Write rows
+    Dim dRow As Integer: dRow = hRow + 1
+    Dim prevCp As String: prevCp = ""
+    Dim cptyFace As Double: cptyFace = 0
+
+    For i = 0 To kc - 1
+        Dim pts() As String
+        pts = Split(keys(i), "|")
+        Dim thisCp As String, thisCa As String, thisTy As String
+        thisCp = pts(0): thisCa = pts(1): thisTy = pts(2)
+
+        Dim ar As Double, br As Double, sp As Double
+        If rateCounts(i) > 0 Then ar = rateSums(i) / rateCounts(i)
+        br = GetBench(thisCa, thisTy, wsRates)
+        If br <> 0 Then sp = (ar - br) * 10000
+
+        ' Cpty subtotal
+        If thisCp <> prevCp And prevCp <> "" Then
+            With wsDash.Rows(dRow)
+                .Interior.Color = RGB(30, 41, 59)
+                .Font.Bold = True
+                .Font.Color = RGB(251, 191, 36)
+            End With
+            wsDash.Cells(dRow, 1).Value = prevCp & " TOTAL"
+            wsDash.Cells(dRow, 4).Value = cptyFace
+            wsDash.Cells(dRow, 4).NumberFormat = "#,##0"
+            dRow = dRow + 1
+            cptyFace = 0
+        End If
+
+        Dim rc As Long
+        If i Mod 2 = 0 Then rc = RGB(22, 33, 62) Else rc = RGB(15, 23, 42)
+        wsDash.Rows(dRow).Interior.Color = rc
+
+        wsDash.Cells(dRow, 1).Value = IIf(thisCp = prevCp, "", thisCp)
+        wsDash.Cells(dRow, 2).Value = thisCa
+        wsDash.Cells(dRow, 3).Value = thisTy
+        If UCase(thisTy) = "REPO" Then
+            wsDash.Cells(dRow, 3).Font.Color = RGB(96, 165, 250)
+        Else
+            wsDash.Cells(dRow, 3).Font.Color = RGB(196, 181, 253)
+        End If
+        wsDash.Cells(dRow, 3).Font.Bold = True
+
+        wsDash.Cells(dRow, 4).Value = faces(i)
+        wsDash.Cells(dRow, 4).NumberFormat = "#,##0"
+        wsDash.Cells(dRow, 5).Value = principals(i)
+        wsDash.Cells(dRow, 5).NumberFormat = "#,##0"
+        wsDash.Cells(dRow, 6).Value = ar
+        wsDash.Cells(dRow, 6).NumberFormat = "0.000%"
+        wsDash.Cells(dRow, 7).Value = br
+        wsDash.Cells(dRow, 7).NumberFormat = "0.000%"
+        wsDash.Cells(dRow, 7).Font.Color = RGB(148, 163, 184)
+        wsDash.Cells(dRow, 8).Value = sp
+        wsDash.Cells(dRow, 8).NumberFormat = "+0.0;-0.0;0.0"
+
+        If sp > 0 Then
+            wsDash.Cells(dRow, 8).Font.Color = RGB(52, 211, 153)
+        ElseIf sp < 0 Then
+            wsDash.Cells(dRow, 8).Font.Color = RGB(248, 113, 113)
+        End If
+
+        Dim st As String
+        If br = 0 Then
+            st = "No Benchmark"
+        ElseIf sp >= 5 Then
+            st = "INSIDE"
+            wsDash.Cells(dRow, 9).Font.Color = RGB(52, 211, 153)
+        ElseIf sp >= -5 Then
+            st = "AT MARKET"
+            wsDash.Cells(dRow, 9).Font.Color = RGB(251, 191, 36)
+        Else
+            st = "OUTSIDE"
+            wsDash.Cells(dRow, 9).Font.Color = RGB(248, 113, 113)
+        End If
+        wsDash.Cells(dRow, 9).Value = st
+        wsDash.Cells(dRow, 9).Font.Bold = True
+
+        cptyFace = cptyFace + faces(i)
+        prevCp = thisCp
+        dRow = dRow + 1
+    Next i
+
+    ' Last subtotal
+    If prevCp <> "" Then
+        With wsDash.Rows(dRow)
+            .Interior.Color = RGB(30, 41, 59)
+            .Font.Bold = True
+            .Font.Color = RGB(251, 191, 36)
+        End With
+        wsDash.Cells(dRow, 1).Value = prevCp & " TOTAL"
+        wsDash.Cells(dRow, 4).Value = cptyFace
+        wsDash.Cells(dRow, 4).NumberFormat = "#,##0"
+        dRow = dRow + 1
+    End If
+
+    ' Grand total
+    With wsDash.Rows(dRow)
+        .Interior.Color = RGB(0, 51, 102)
+        .Font.Bold = True
+        .Font.Color = RGB(255, 255, 255)
+    End With
+    wsDash.Cells(dRow, 1).Value = "GRAND TOTAL"
+    wsDash.Cells(dRow, 4).Formula = "=SUM(D" & hRow + 1 & ":D" & dRow - 1 & ")"
+    wsDash.Cells(dRow, 4).NumberFormat = "#,##0"
+    wsDash.Cells(dRow, 5).Formula = "=SUM(E" & hRow + 1 & ":E" & dRow - 1 & ")"
+    wsDash.Cells(dRow, 5).NumberFormat = "#,##0"
+
+    wsDash.Columns("A:K").AutoFit
+    wsDash.Tab.Color = RGB(99, 102, 241)
+End Sub
+
+Sub DashKPI(ws As Worksheet, r As Integer, c As Integer, lbl As String, val As Double, bg As Long, fmt As String)
+    With ws.Range(ws.Cells(r, c), ws.Cells(r, c + 2))
+        .Merge
+        .Value = lbl
+        .Font.Size = 8: .Font.Bold = True
+        .Font.Color = RGB(148, 163, 184)
+        .Interior.Color = bg
+        .HorizontalAlignment = xlCenter
+    End With
+    With ws.Range(ws.Cells(r + 1, c), ws.Cells(r + 1, c + 2))
+        .Merge
+        .Value = val
+        .Font.Size = 14: .Font.Bold = True
+        .Font.Color = RGB(255, 255, 255)
+        .Interior.Color = bg
+        .HorizontalAlignment = xlCenter
+        .NumberFormat = fmt
+    End With
+End Sub
+
+' ============================================================
+' DRILL-DOWN SHEET
+' ============================================================
+Sub BuildDrillDown()
+    Call InitConstants
+    Dim wsSrc As Worksheet, wsDrill As Worksheet, wsRates As Worksheet
+
+    If Not SheetExists(SRC_SHEET) Then Exit Sub
+    Set wsSrc = ThisWorkbook.Sheets(SRC_SHEET)
+    Set wsRates = ThisWorkbook.Sheets(RATES_SHEET)
+
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    ThisWorkbook.Sheets(DRILLDOWN_SHEET).Delete
+    Application.DisplayAlerts = True
+    On Error GoTo 0
+
+    Set wsDrill = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(DASH_SHEET))
+    wsDrill.Name = DRILLDOWN_SHEET
+    wsDrill.Cells.Interior.Color = RGB(15, 23, 42)
+    wsDrill.Cells.Font.Color = RGB(226, 232, 240)
+
+    With wsDrill.Range("A1:K1")
+        .Merge
+        .Value = "TRADE DRILL-DOWN — Individual Trade Detail (use dropdown arrows to filter)"
+        .Font.Size = 13: .Font.Bold = True
+        .Font.Color = RGB(52, 211, 153)
+        .HorizontalAlignment = xlCenter
+    End With
+
+    Dim hdrs As Variant
+    hdrs = Array("Counterparty", "Category", "Tran Type", "Face", "Principal", "Rate", "Benchmark", "Spread (bps)", "Daily P&L ($)", "Status", "Src Row")
+    Dim h As Integer
+    For h = 0 To UBound(hdrs)
+        With wsDrill.Cells(3, h + 1)
+            .Value = hdrs(h)
+            .Font.Bold = True
+            .Font.Color = RGB(255, 255, 255)
+            .Interior.Color = RGB(0, 51, 102)
+            .HorizontalAlignment = xlCenter
+        End With
+    Next h
+
+    Dim lastRow As Long
+    lastRow = wsSrc.Cells(wsSrc.Rows.Count, 1).End(xlUp).Row
+    If lastRow < 2 Then Exit Sub
+
+    Dim dataArr As Variant
+    dataArr = wsSrc.Range(wsSrc.Cells(2, 1), wsSrc.Cells(lastRow, COL_RATE)).Value
+
+    Dim wr As Integer: wr = 4
+    Dim i As Long
+    For i = 1 To UBound(dataArr, 1)
+        Dim cp As String, ca As String, ty As String
+        Dim fv As Double, pv As Double, rv As Double
+        cp = Trim(CStr(dataArr(i, COL_CPTY)))
+        ca = Trim(CStr(dataArr(i, COL_CATEGORY)))
+        ty = Trim(CStr(dataArr(i, COL_TRANTYPE)))
+        fv = 0: pv = 0: rv = 0
+        On Error Resume Next
+        fv = CDbl(dataArr(i, COL_FACE))
+        pv = CDbl(dataArr(i, COL_PRINCIPAL))
+        rv = CDbl(dataArr(i, COL_RATE))
+        On Error GoTo 0
+        If fv = 0 Then GoTo SkipDrill
+
+        Dim br As Double, sp As Double, pnl As Double
+        br = GetBench(ca, ty, wsRates)
+        If br <> 0 Then
+            sp = (rv - br) * 10000
+            pnl = fv * (rv - br) / 360
+        End If
+
+        Dim rc As Long
+        If UCase(ty) = "REPO" Then rc = RGB(20, 37, 80) Else rc = RGB(50, 20, 60)
+        wsDrill.Rows(wr).Interior.Color = rc
+
+        wsDrill.Cells(wr, 1).Value = cp
+        wsDrill.Cells(wr, 2).Value = ca
+        wsDrill.Cells(wr, 3).Value = ty
+        If UCase(ty) = "REPO" Then
+            wsDrill.Cells(wr, 3).Font.Color = RGB(96, 165, 250)
+        Else
+            wsDrill.Cells(wr, 3).Font.Color = RGB(196, 181, 253)
+        End If
+        wsDrill.Cells(wr, 3).Font.Bold = True
+        wsDrill.Cells(wr, 4).Value = fv
+        wsDrill.Cells(wr, 4).NumberFormat = "#,##0"
+        wsDrill.Cells(wr, 5).Value = pv
+        wsDrill.Cells(wr, 5).NumberFormat = "#,##0"
+        wsDrill.Cells(wr, 6).Value = rv
+        wsDrill.Cells(wr, 6).NumberFormat = "0.000%"
+        wsDrill.Cells(wr, 7).Value = br
+        wsDrill.Cells(wr, 7).NumberFormat = "0.000%"
+        wsDrill.Cells(wr, 7).Font.Color = RGB(148, 163, 184)
+        wsDrill.Cells(wr, 8).Value = sp
+        wsDrill.Cells(wr, 8).NumberFormat = "+0.0;-0.0;0.0"
+        If sp > 0 Then wsDrill.Cells(wr, 8).Font.Color = RGB(52, 211, 153)
+        If sp < 0 Then wsDrill.Cells(wr, 8).Font.Color = RGB(248, 113, 113)
+        wsDrill.Cells(wr, 9).Value = pnl
+        wsDrill.Cells(wr, 9).NumberFormat = "$#,##0;($#,##0)"
+        If pnl > 0 Then wsDrill.Cells(wr, 9).Font.Color = RGB(52, 211, 153)
+        If pnl < 0 Then wsDrill.Cells(wr, 9).Font.Color = RGB(248, 113, 113)
+
+        Dim st As String
+        If br = 0 Then st = "N/A"
+        If sp >= 5 Then st = "INSIDE"
+        If sp >= -5 And sp < 5 Then st = "AT MARKET"
+        If sp < -5 Then st = "OUTSIDE"
+        wsDrill.Cells(wr, 10).Value = st
+        wsDrill.Cells(wr, 10).Font.Bold = True
+        wsDrill.Cells(wr, 11).Value = i + 1
+        wr = wr + 1
+SkipDrill:
+    Next i
+
+    ' Totals row
+    With wsDrill.Rows(wr)
+        .Interior.Color = RGB(0, 51, 102)
+        .Font.Bold = True
+        .Font.Color = RGB(255, 255, 255)
+    End With
+    wsDrill.Cells(wr, 1).Value = "TOTALS"
+    wsDrill.Cells(wr, 4).Formula = "=SUM(D4:D" & wr - 1 & ")"
+    wsDrill.Cells(wr, 4).NumberFormat = "#,##0"
+    wsDrill.Cells(wr, 5).Formula = "=SUM(E4:E" & wr - 1 & ")"
+    wsDrill.Cells(wr, 5).NumberFormat = "#,##0"
+    wsDrill.Cells(wr, 9).Formula = "=SUM(I4:I" & wr - 1 & ")"
+    wsDrill.Cells(wr, 9).NumberFormat = "$#,##0;($#,##0)"
+
+    wsDrill.Range("A3:K3").AutoFilter
+    wsDrill.Activate
+    wsDrill.Range("A4").Select
+    ActiveWindow.FreezePanes = True
+    wsDrill.Columns("A:K").AutoFit
+    wsDrill.Tab.Color = RGB(52, 211, 153)
+
+    ThisWorkbook.Sheets(CONTROL_SHEET).Activate
+End Sub
+
+' ============================================================
+' EMAIL FORMATTER
+' ============================================================
+Sub FormatOutlookEmail()
+    Call InitConstants
+    If Not SheetExists(SRC_SHEET) Then
+        MsgBox "Run Refresh All first.", vbExclamation
+        Exit Sub
+    End If
+
+    Dim wsSrc As Worksheet, wsRates As Worksheet
+    Set wsSrc = ThisWorkbook.Sheets(SRC_SHEET)
+    Set wsRates = ThisWorkbook.Sheets(RATES_SHEET)
+
+    Dim lastRow As Long
+    lastRow = wsSrc.Cells(wsSrc.Rows.Count, 1).End(xlUp).Row
+    If lastRow < 2 Then Exit Sub
+
+    Dim dataArr As Variant
+    dataArr = wsSrc.Range(wsSrc.Cells(2, 1), wsSrc.Cells(lastRow, COL_RATE)).Value
+
+    Dim totalRepo As Double, totalRR As Double, rateSum As Double, rateCnt As Long
+    Dim i As Long
+    For i = 1 To UBound(dataArr, 1)
+        Dim tt As String, fv As Double, rv As Double
+        tt = UCase(Trim(CStr(dataArr(i, COL_TRANTYPE))))
+        fv = 0: rv = 0
+        On Error Resume Next
+        fv = CDbl(dataArr(i, COL_FACE))
+        rv = CDbl(dataArr(i, COL_RATE))
+        On Error GoTo 0
+        If tt = "REPO" Then totalRepo = totalRepo + fv
+        If tt = "RR" Or InStr(tt, "REVERSE") > 0 Then totalRR = totalRR + fv
+        If rv <> 0 Then rateSum = rateSum + rv: rateCnt = rateCnt + 1
+    Next i
+
+    Dim avgRt As Double
+    If rateCnt > 0 Then avgRt = rateSum / rateCnt
+    Dim sofrRt As Double
+    sofrRt = GetBenchRate("SOFR", wsRates)
+
+    ' Build HTML
+    Dim html As String
+    html = "<html><body style='font-family:Calibri,Arial;max-width:900px;padding:20px;'>"
+    html = html & "<div style='background:white;border-radius:8px;padding:24px;border:1px solid #e5e7eb;'>"
+    html = html & "<h2 style='color:#1e3a5f;border-bottom:2px solid #1e3a5f;padding-bottom:8px;'>"
+    html = html & "Daily Repo / Reverse Repo Blotter &mdash; " & Format(Date, "dd-mmm-yyyy") & "</h2>"
+
+    ' KPI row
+    html = html & "<table style='width:100%;margin-bottom:20px;border-collapse:separate;border-spacing:6px;'><tr>"
+    html = html & "<td style='background:#1e3a5f;color:white;padding:12px;border-radius:6px;text-align:center;'>"
+    html = html & "<div style='font-size:10px;'>TOTAL REPO FACE</div><div style='font-size:18px;font-weight:bold;'>" & FmtAmt(totalRepo) & "</div></td>"
+    html = html & "<td style='background:#7f1d1d;color:white;padding:12px;border-radius:6px;text-align:center;'>"
+    html = html & "<div style='font-size:10px;'>TOTAL REV REPO</div><div style='font-size:18px;font-weight:bold;'>" & FmtAmt(totalRR) & "</div></td>"
+    html = html & "<td style='background:#064e3b;color:white;padding:12px;border-radius:6px;text-align:center;'>"
+    html = html & "<div style='font-size:10px;'>NET POSITION</div><div style='font-size:18px;font-weight:bold;'>" & FmtAmt(totalRepo - totalRR) & "</div></td>"
+    html = html & "<td style='background:#581c87;color:white;padding:12px;border-radius:6px;text-align:center;'>"
+    html = html & "<div style='font-size:10px;'>AVG RATE</div><div style='font-size:18px;font-weight:bold;'>" & Format(avgRt * 100, "0.000") & "%</div></td>"
+    html = html & "<td style='background:#1c3a58;color:white;padding:12px;border-radius:6px;text-align:center;'>"
+    html = html & "<div style='font-size:10px;'>SOFR</div><div style='font-size:18px;font-weight:bold;'>" & Format(sofrRt * 100, "0.000") & "%</div></td>"
+    html = html & "</tr></table>"
+
+    ' Trade table
+    html = html & "<table style='width:100%;border-collapse:collapse;font-size:12px;'>"
+    html = html & "<tr style='background:#1e3a5f;color:white;'>"
+    html = html & "<th style='padding:8px;'>Counterparty</th><th style='padding:8px;'>Category</th>"
+    html = html & "<th style='padding:8px;'>Type</th><th style='padding:8px;text-align:right;'>Face</th>"
+    html = html & "<th style='padding:8px;text-align:right;'>Principal</th><th style='padding:8px;'>Rate</th>"
+    html = html & "<th style='padding:8px;'>Benchmark</th><th style='padding:8px;'>Spread</th>"
+    html = html & "<th style='padding:8px;'>Status</th></tr>"
+
+    Dim rowNum As Long: rowNum = 0
+    For i = 1 To UBound(dataArr, 1)
+        Dim cp As String, ca As String, ty As String, pv As Double
+        Dim br As Double, sp As Double
+        cp = Trim(CStr(dataArr(i, COL_CPTY)))
+        ca = Trim(CStr(dataArr(i, COL_CATEGORY)))
+        ty = Trim(CStr(dataArr(i, COL_TRANTYPE)))
+        fv = 0: pv = 0: rv = 0
+        On Error Resume Next
+        fv = CDbl(dataArr(i, COL_FACE))
+        pv = CDbl(dataArr(i, COL_PRINCIPAL))
+        rv = CDbl(dataArr(i, COL_RATE))
+        On Error GoTo 0
+        If fv = 0 Then GoTo SkipEmail
+
+        br = GetBench(ca, ty, wsRates)
+        If br <> 0 Then sp = (rv - br) * 10000
+
+        Dim bg As String
+        If rowNum Mod 2 = 0 Then bg = "#f0f4ff" Else bg = "#ffffff"
+
+        Dim spCol As String, stTxt As String
+        If br = 0 Then spCol = "#6b7280": stTxt = "N/A"
+        If sp >= 5 Then spCol = "#065f46": stTxt = "INSIDE"
+        If sp >= -5 And sp < 5 Then spCol = "#92400e": stTxt = "AT MARKET"
+        If sp < -5 Then spCol = "#991b1b": stTxt = "OUTSIDE"
+
+        html = html & "<tr style='background:" & bg & ";'>"
+        html = html & "<td style='padding:6px 8px;border-bottom:1px solid #e5e7eb;'><b>" & cp & "</b></td>"
+        html = html & "<td style='padding:6px 8px;border-bottom:1px solid #e5e7eb;'>" & ca & "</td>"
+        html = html & "<td style='padding:6px 8px;border-bottom:1px solid #e5e7eb;font-weight:bold;color:" & IIf(UCase(ty) = "REPO", "#1d4ed8", "#7c3aed") & ";'>" & ty & "</td>"
+        html = html & "<td style='padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;'>" & FmtAmt(fv) & "</td>"
+        html = html & "<td style='padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;'>" & FmtAmt(pv) & "</td>"
+        html = html & "<td style='padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;'>" & Format(rv * 100, "0.000") & "%</td>"
+        html = html & "<td style='padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;color:#6b7280;'>" & Format(br * 100, "0.000") & "%</td>"
+        html = html & "<td style='padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:bold;color:" & spCol & ";'>" & Format(sp, "+0.0;-0.0;0.0") & " bps</td>"
+        html = html & "<td style='padding:6px 8px;border-bottom:1px solid #e5e7eb;font-weight:bold;color:" & spCol & ";'>" & stTxt & "</td>"
+        html = html & "</tr>"
+        rowNum = rowNum + 1
+SkipEmail:
+    Next i
+
+    html = html & "</table>"
+    html = html & "<hr style='margin-top:20px;border:1px solid #e5e7eb;'>"
+    html = html & "<p style='color:#9ca3af;font-size:11px;'>Generated " & Format(Now, "dd-mmm-yyyy hh:mm AM/PM") & " | Rates are indicative placeholders</p>"
+    html = html & "</div></body></html>"
+
+    ' Open Outlook
+    Dim olApp As Object
+    On Error Resume Next
+    Set olApp = GetObject(, "Outlook.Application")
+    If olApp Is Nothing Then Set olApp = CreateObject("Outlook.Application")
+    On Error GoTo 0
+
+    If olApp Is Nothing Then
+        ' Save as HTML fallback
+        Dim fPath As String
+        fPath = Environ("TMPDIR") & "RepoBlotter_" & Format(Date, "yyyymmdd") & ".html"
+        Dim fn As Integer: fn = FreeFile
+        Open fPath For Output As #fn
+        Print #fn, html
+        Close #fn
+        MsgBox "Outlook not found. Email saved as HTML:" & vbNewLine & fPath, vbInformation
+        Exit Sub
+    End If
+
+    Dim mail As Object
+    Set mail = olApp.CreateItem(0)
+    With mail
+        .Subject = "[REPO BLOTTER] " & Format(Date, "dd-mmm-yyyy")
+        .HTMLBody = html
+        .Display
+    End With
+    MsgBox "Email drafted in Outlook! Review and send.", vbInformation, "Done"
+End Sub
+
+' ============================================================
+' HELPER FUNCTIONS
+' ============================================================
+Function GetBenchRate(rateName As String, wsRates As Worksheet) As Double
+    Dim i As Integer
+    For i = 2 To 11
+        If Trim(wsRates.Cells(i, 1).Value) = rateName Then
+            On Error Resume Next
+            GetBenchRate = CDbl(wsRates.Cells(i, 3).Value)
+            On Error GoTo 0
+            Exit Function
+        End If
+    Next i
+    GetBenchRate = 0
+End Function
+
+Function GetBench(category As String, tranType As String, wsRates As Worksheet) As Double
+    Dim cat As String: cat = UCase(category)
+    If InStr(cat, "US") > 0 Or InStr(cat, "UST") > 0 Or InStr(cat, "TREASURY") > 0 Then
+        GetBench = GetBenchRate("CME UST Repo", wsRates)
+    ElseIf InStr(cat, "GILT") > 0 Or InStr(cat, "UK") > 0 Then
+        GetBench = GetBenchRate("CME Gilt Repo", wsRates)
+    ElseIf InStr(cat, "AGENCY") > 0 Then
+        GetBench = GetBenchRate("SOFR+3", wsRates)
+    Else
+        GetBench = GetBenchRate("SOFR", wsRates)
+    End If
+End Function
+
+Function FmtAmt(amount As Double) As String
+    If Abs(amount) >= 1000000000 Then
+        FmtAmt = Format(amount / 1000000000, "0.0") & "B"
+    ElseIf Abs(amount) >= 1000000 Then
+        FmtAmt = Format(amount / 1000000, "0.0") & "M"
+    ElseIf Abs(amount) >= 1000 Then
+        FmtAmt = Format(amount / 1000, "0.0") & "K"
+    Else
+        FmtAmt = Format(amount, "#,##0")
+    End If
+End Function
+
+Function SheetExists(sName As String) As Boolean
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(sName)
+    SheetExists = Not ws Is Nothing
+    On Error GoTo 0
+End Function
+
+Sub GoToDashboard()
+    Call InitConstants
+    ThisWorkbook.Sheets(DASH_SHEET).Activate
+End Sub
+
+Sub GoToDrillDown()
+    Call InitConstants
+    ThisWorkbook.Sheets(DRILLDOWN_SHEET).Activate
+End Sub
+
+Sub CopyTradeTable()
+    Call InitConstants
+    If Not SheetExists(DRILLDOWN_SHEET) Then
+        MsgBox "Run Refresh All first.", vbExclamation: Exit Sub
+    End If
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(DRILLDOWN_SHEET)
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    ws.Range("A3:J" & lastRow).Copy
+    MsgBox "Table copied to clipboard!", vbInformation
+End Sub
