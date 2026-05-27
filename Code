@@ -1,0 +1,617 @@
+app_code = '''
+import streamlit as st
+import pandas as pd
+import numpy as np
+from io import BytesIO
+import warnings
+warnings.filterwarnings("ignore")
+
+st.set_page_config(
+    page_title="Repo Trade Analytics",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+    --bg-base:      #0d1117;
+    --bg-surface:   #161b22;
+    --bg-card:      #1c2230;
+    --bg-hover:     #21283a;
+    --border:       #30363d;
+    --border-light: #21283a;
+    --accent-blue:  #2f81f7;
+    --accent-teal:  #39d353;
+    --accent-amber: #d29922;
+    --accent-red:   #f85149;
+    --accent-purple:#bc8cff;
+    --text-primary: #e6edf3;
+    --text-secondary:#8b949e;
+    --text-muted:   #484f58;
+    --repo-color:   #2f81f7;
+    --rr-color:     #39d353;
+    --font-sans:    'IBM Plex Sans', sans-serif;
+    --font-mono:    'IBM Plex Mono', monospace;
+}
+html, body, [class*="css"] {
+    font-family: var(--font-sans) !important;
+    background-color: var(--bg-base) !important;
+    color: var(--text-primary) !important;
+}
+.main .block-container {
+    padding: 1.5rem 2rem 3rem 2rem !important;
+    max-width: 100% !important;
+    background: var(--bg-base);
+}
+[data-testid="stSidebar"] {
+    background: var(--bg-surface) !important;
+    border-right: 1px solid var(--border) !important;
+}
+[data-testid="stSidebar"] .block-container { padding: 1.5rem 1rem !important; }
+.sidebar-header {
+    text-align: center;
+    padding: 1rem 0 1.5rem 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+}
+.sidebar-header h2 {
+    font-family: var(--font-mono) !important;
+    font-size: 1rem;
+    color: var(--accent-blue);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0;
+}
+.sidebar-header p {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin: 0.3rem 0 0 0;
+    letter-spacing: 0.05em;
+}
+.filter-label {
+    font-family: var(--font-mono) !important;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+    margin-top: 1rem;
+}
+[data-testid="stMultiSelect"] > div > div {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+}
+[data-testid="stMultiSelect"] span[data-baseweb="tag"] {
+    background: #1c3553 !important;
+    border: 1px solid var(--accent-blue) !important;
+    color: var(--accent-blue) !important;
+    font-size: 0.72rem !important;
+    font-family: var(--font-mono) !important;
+}
+[data-testid="stFileUploader"] {
+    background: var(--bg-card) !important;
+    border: 1px dashed var(--border) !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+}
+.kpi-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.3rem;
+    position: relative;
+    overflow: hidden;
+}
+.kpi-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+}
+.kpi-card.blue::before  { background: var(--accent-blue); }
+.kpi-card.teal::before  { background: var(--accent-teal); }
+.kpi-card.amber::before { background: var(--accent-amber); }
+.kpi-card.purple::before{ background: var(--accent-purple); }
+.kpi-card.red::before   { background: var(--accent-red); }
+.kpi-label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+}
+.kpi-value {
+    font-family: var(--font-mono);
+    font-size: 1.45rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1;
+}
+.kpi-sub {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 0.3rem;
+    font-family: var(--font-mono);
+}
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 1.5rem 0 1rem 0;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+}
+.section-header h3 {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin: 0;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+.badge-repo  { background: #1c3553; color: var(--accent-blue);   border: 1px solid #2f5080; }
+.badge-rr    { background: #1a2e1e; color: var(--accent-teal);   border: 1px solid #2d5234; }
+.badge-ccy   { background: #2a2318; color: var(--accent-amber);  border: 1px solid #5a4a20; }
+.trade-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    margin-top: 0.5rem;
+}
+.trade-table th {
+    background: var(--bg-base);
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.5rem 0.8rem;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+}
+.trade-table th:first-child { text-align: left; }
+.trade-table td {
+    padding: 0.45rem 0.8rem;
+    border-bottom: 1px solid var(--border-light);
+    text-align: right;
+    color: var(--text-primary);
+}
+.trade-table td:first-child { text-align: left; color: var(--text-secondary); }
+.trade-table tr:hover td { background: var(--bg-hover); }
+.empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+.empty-state h3 {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+[data-testid="stDownloadButton"] button {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--accent-blue) !important;
+    color: var(--accent-blue) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.08em !important;
+    padding: 0.5rem 1.2rem !important;
+    border-radius: 6px !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    background: var(--bg-surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
+    font-family: var(--font-mono) !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: var(--text-muted) !important;
+    padding: 0.6rem 1.2rem !important;
+    background: transparent !important;
+}
+[data-testid="stTabs"] [aria-selected="true"] {
+    color: var(--accent-blue) !important;
+    border-bottom: 2px solid var(--accent-blue) !important;
+}
+[data-testid="stExpander"] {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    margin-bottom: 4px !important;
+}
+[data-testid="stExpander"] summary {
+    font-family: var(--font-mono) !important;
+    font-size: 0.82rem !important;
+    color: var(--text-primary) !important;
+    padding: 0.6rem 1rem !important;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+[data-testid="stCheckbox"] label {
+    font-family: var(--font-mono) !important;
+    font-size: 0.75rem !important;
+    color: var(--text-secondary) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+BUCKET_ORDER = ["0-1D","1-2D","2-7D","8-30D","31-90D","91-180D","181-365D","1-2Y","2-5Y","5Y+","No Bucket"]
+
+def fmt_millions(val):
+    if pd.isna(val) or val == 0: return "—"
+    abs_val = abs(val)
+    if abs_val >= 1e9:  return f"{val/1e9:.2f}B"
+    if abs_val >= 1e6:  return f"{val/1e6:.1f}M"
+    if abs_val >= 1e3:  return f"{val/1e3:.0f}K"
+    return f"{val:,.0f}"
+
+def fmt_rate(val):
+    if pd.isna(val): return "—"
+    return f"{val:.4f}%"
+
+def sort_buckets(df, col="final_bucket"):
+    cat = pd.Categorical(df[col], categories=BUCKET_ORDER, ordered=True)
+    df = df.copy()
+    df[col] = cat
+    return df.sort_values(col)
+
+@st.cache_data(show_spinner=False)
+def load_data(file_bytes):
+    df = pd.read_excel(BytesIO(file_bytes), sheet_name="Trade Data")
+    str_cols = df.select_dtypes(include="object").columns
+    for c in str_cols:
+        df[c] = df[c].astype(str).str.strip()
+    for c in str_cols:
+        df[c] = df[c].replace({"nan":"","None":"","NaN":""})
+    df["final_bucket"] = df["final_bucket"].replace("","No Bucket").fillna("No Bucket")
+    for col in ["principal","face","rate"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+    return df
+
+def apply_filters(df, sel_type, sel_em, sel_cpty, sel_ccy, sel_bucket, sel_tran):
+    d = df.copy()
+    if sel_type:   d = d[d["type"].isin(sel_type)]
+    if sel_em:     d = d[d["is_emerging_market"].isin(sel_em)]
+    if sel_cpty:   d = d[d["cpty"].isin(sel_cpty)]
+    if sel_ccy:    d = d[d["bond_ccy"].isin(sel_ccy)]
+    if sel_bucket: d = d[d["final_bucket"].isin(sel_bucket)]
+    if sel_tran:   d = d[d["tran_type"].isin(sel_tran)]
+    return d
+
+def agg(df):
+    return {
+        "principal": df["principal"].sum(),
+        "face":      df["face"].sum(),
+        "rate":      df["rate"].mean() if len(df) else np.nan,
+        "count":     len(df),
+    }
+
+def to_excel_export(df):
+    buf = BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Filtered Trades")
+    return buf.getvalue()
+
+# ── SIDEBAR ──
+with st.sidebar:
+    st.markdown("""
+    <div class="sidebar-header">
+        <h2>⬡ Repo Analytics</h2>
+        <p>TRADE DATA EXPLORER v2.0</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    uploaded = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"], label_visibility="collapsed")
+
+    if uploaded:
+        raw_df = load_data(uploaded.read())
+        st.markdown(f"""
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:6px;
+                    padding:0.6rem 0.9rem;margin:0.8rem 0 1.2rem 0;font-family:var(--font-mono);font-size:0.7rem;">
+            <span style="color:var(--accent-teal);">✓</span>
+            <span style="color:var(--text-secondary);"> {len(raw_df):,} trades loaded</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        def ms(label, col, icon=""):
+            vals = sorted(raw_df[col].dropna().unique().tolist())
+            st.markdown(f\'<div class="filter-label">{icon} {label}</div>\', unsafe_allow_html=True)
+            return st.multiselect(label, vals, default=[], label_visibility="collapsed", key=f"f_{col}")
+
+        sel_type   = ms("Client / Hedge",    "type",               "◈")
+        sel_em     = ms("Emerging Market",   "is_emerging_market", "◉")
+        sel_cpty   = ms("Counterparty",      "cpty",               "◎")
+        sel_ccy    = ms("Currency",          "bond_ccy",           "◆")
+        sel_bucket = ms("Time Bucket",       "final_bucket",       "◷")
+        sel_tran   = ms("Transaction Type",  "tran_type",          "◐")
+
+        st.markdown("<hr style=\'margin:1.5rem 0 1rem 0\'>", unsafe_allow_html=True)
+        st.markdown(\'<div class="filter-label">⬦ Options</div>\', unsafe_allow_html=True)
+        show_drill = st.checkbox("Show drill-through rows", value=False)
+    else:
+        raw_df = None
+        sel_type = sel_em = sel_cpty = sel_ccy = sel_bucket = sel_tran = []
+        show_drill = False
+
+# ── PAGE TITLE ──
+st.markdown("""
+<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;
+            padding-bottom:1rem;border-bottom:1px solid var(--border);">
+    <div>
+        <h1 style="font-family:var(--font-mono);font-size:1.4rem;font-weight:700;
+                   color:var(--text-primary);margin:0;letter-spacing:0.05em;">
+            REPO TRADE ANALYTICS
+        </h1>
+        <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);
+                  margin:0.2rem 0 0 0;letter-spacing:0.1em;">
+            HIERARCHICAL DRILL-DOWN · MULTI-CURRENCY · REAL-TIME FILTER
+        </p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+if raw_df is None:
+    st.markdown("""
+    <div class="empty-state">
+        <div style="font-size:3rem;margin-bottom:1rem;">📂</div>
+        <h3>Upload your trade data to begin</h3>
+        <p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);">
+            Excel file · Sheet: "Trade Data" · Columns: type, cpty, bond_ccy, final_bucket, tran_type, structure, principal, face, rate
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+df = apply_filters(raw_df, sel_type, sel_em, sel_cpty, sel_ccy, sel_bucket, sel_tran)
+
+if len(df) == 0:
+    st.markdown("""
+    <div class="empty-state">
+        <div style="font-size:2rem;margin-bottom:0.8rem;">🔍</div>
+        <h3>No data for selected filters</h3>
+        <p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);">
+            Adjust your filter selections in the sidebar.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+# ── KPI BAR ──
+total_p = df["principal"].sum()
+total_f = df["face"].sum()
+avg_r   = df["rate"].mean()
+n_cpty  = df["cpty"].nunique()
+n_ccy   = df["bond_ccy"].nunique()
+repo_p  = df[df["tran_type"]=="R"]["principal"].sum()
+rr_p    = df[df["tran_type"]=="RR"]["principal"].sum()
+net_p   = repo_p - rr_p
+
+col1,col2,col3,col4,col5 = st.columns(5)
+with col1:
+    st.markdown(f\'\'\'<div class="kpi-card blue">
+        <div class="kpi-label">Total Principal</div>
+        <div class="kpi-value">{fmt_millions(total_p)}</div>
+        <div class="kpi-sub">{len(df):,} trades</div>
+    </div>\'\'\', unsafe_allow_html=True)
+with col2:
+    st.markdown(f\'\'\'<div class="kpi-card teal">
+        <div class="kpi-label">Total Face</div>
+        <div class="kpi-value">{fmt_millions(total_f)}</div>
+        <div class="kpi-sub">{n_ccy} currencies</div>
+    </div>\'\'\', unsafe_allow_html=True)
+with col3:
+    st.markdown(f\'\'\'<div class="kpi-card amber">
+        <div class="kpi-label">Avg Rate</div>
+        <div class="kpi-value">{fmt_rate(avg_r)}</div>
+        <div class="kpi-sub">{n_cpty} counterparties</div>
+    </div>\'\'\', unsafe_allow_html=True)
+with col4:
+    color = "red" if net_p < 0 else "purple"
+    st.markdown(f\'\'\'<div class="kpi-card {color}">
+        <div class="kpi-label">Net Exposure (R-RR)</div>
+        <div class="kpi-value">{fmt_millions(net_p)}</div>
+        <div class="kpi-sub">R: {fmt_millions(repo_p)}</div>
+    </div>\'\'\', unsafe_allow_html=True)
+with col5:
+    st.markdown(f\'\'\'<div class="kpi-card purple">
+        <div class="kpi-label">Reverse Repo</div>
+        <div class="kpi-value">{fmt_millions(rr_p)}</div>
+        <div class="kpi-sub">RR Notional</div>
+    </div>\'\'\', unsafe_allow_html=True)
+
+st.markdown("<div style=\'height:1rem\'></div>", unsafe_allow_html=True)
+
+# ── TABS ──
+tab1, tab2, tab3 = st.tabs(["🌲  HIERARCHY VIEW", "⊞  PIVOT TABLE", "⊟  RAW TRADES"])
+
+# ── TAB 1: HIERARCHY ──
+with tab1:
+    st.markdown(\'\'\'
+    <div class="section-header">
+        <div class="dot" style="background:var(--accent-blue)"></div>
+        <h3>Counterparty → Currency → Bucket → Tran Type → Structure</h3>
+    </div>\'\'\', unsafe_allow_html=True)
+
+    ecol1, ecol2 = st.columns([8,2])
+    with ecol2:
+        st.download_button(
+            "⬇ Export Filtered Data",
+            data=to_excel_export(df),
+            file_name="repo_filtered.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    cpty_agg = df.groupby("cpty").agg(
+        principal=("principal","sum"),
+        face=("face","sum"),
+        rate=("rate","mean"),
+        count=("principal","count"),
+    ).sort_values("principal", ascending=False)
+
+    for cpty, cpty_data in cpty_agg.iterrows():
+        cpty_df = df[df["cpty"] == cpty]
+        n_ccys  = cpty_df["bond_ccy"].nunique()
+        with st.expander(
+            f"**{cpty}**  ·  P: {fmt_millions(cpty_data[\'principal\'])}  ·  "
+            f"F: {fmt_millions(cpty_data[\'face\'])}  ·  R: {fmt_rate(cpty_data[\'rate\'])}  ·  "
+            f"{n_ccys} CCY  ·  {int(cpty_data[\'count\'])} trades",
+            expanded=False
+        ):
+            ccy_agg = cpty_df.groupby("bond_ccy").agg(
+                principal=("principal","sum"),
+                face=("face","sum"),
+                rate=("rate","mean"),
+                count=("principal","count"),
+            ).sort_values("principal", ascending=False)
+
+            for ccy, ccy_data in ccy_agg.iterrows():
+                ccy_df = cpty_df[cpty_df["bond_ccy"] == ccy]
+                with st.expander(
+                    f"💱 {ccy}  ·  P: {fmt_millions(ccy_data[\'principal\'])}  ·  "
+                    f"F: {fmt_millions(ccy_data[\'face\'])}  ·  "
+                    f"R: {fmt_rate(ccy_data[\'rate\'])}  ·  {int(ccy_data[\'count\'])} trades",
+                    expanded=False
+                ):
+                    bucket_agg = ccy_df.groupby("final_bucket").agg(
+                        principal=("principal","sum"),
+                        face=("face","sum"),
+                        rate=("rate","mean"),
+                        count=("principal","count"),
+                    ).reset_index()
+                    bucket_agg = sort_buckets(bucket_agg, "final_bucket")
+
+                    for _, brow in bucket_agg.iterrows():
+                        bucket = brow["final_bucket"]
+                        bkt_df = ccy_df[ccy_df["final_bucket"] == bucket]
+                        with st.expander(
+                            f"⏱ **{bucket}**  ·  P: {fmt_millions(brow[\'principal\'])}  ·  "
+                            f"F: {fmt_millions(brow[\'face\'])}  ·  "
+                            f"R: {fmt_rate(brow[\'rate\'])}  ·  {int(brow[\'count\'])} trades",
+                            expanded=False
+                        ):
+                            for tran_type in ["R","RR"]:
+                                tran_df = bkt_df[bkt_df["tran_type"] == tran_type]
+                                if len(tran_df) == 0: continue
+                                badge_cls = "badge-repo" if tran_type=="R" else "badge-rr"
+                                label     = "REPO"       if tran_type=="R" else "REVERSE REPO"
+                                ta = agg(tran_df)
+                                with st.expander(
+                                    f"{label}  ·  P: {fmt_millions(ta[\'principal\'])}  ·  "
+                                    f"F: {fmt_millions(ta[\'face\'])}  ·  "
+                                    f"R: {fmt_rate(ta[\'rate\'])}  ·  {ta[\'count\']} trades",
+                                    expanded=False
+                                ):
+                                    struct_agg = tran_df.groupby("structure").agg(
+                                        principal=("principal","sum"),
+                                        face=("face","sum"),
+                                        rate=("rate","mean"),
+                                        count=("principal","count"),
+                                    ).reset_index().sort_values("principal", ascending=False)
+                                    rows_html = ""
+                                    for _, sr in struct_agg.iterrows():
+                                        rows_html += f"""
+                                        <tr>
+                                            <td>{sr[\'structure\']}</td>
+                                            <td>{fmt_millions(sr[\'principal\'])}</td>
+                                            <td>{fmt_millions(sr[\'face\'])}</td>
+                                            <td style="color:var(--accent-amber)">{fmt_rate(sr[\'rate\'])}</td>
+                                            <td>{int(sr[\'count\'])}</td>
+                                        </tr>"""
+                                    st.markdown(f"""
+                                    <table class="trade-table">
+                                        <thead><tr>
+                                            <th>Structure</th><th>Principal</th>
+                                            <th>Face</th><th>Avg Rate</th><th>Trades</th>
+                                        </tr></thead>
+                                        <tbody>{rows_html}</tbody>
+                                    </table>""", unsafe_allow_html=True)
+                                    if show_drill:
+                                        show_cols = [c for c in ["cpty","bond_ccy","final_bucket","tran_type",
+                                                                  "structure","principal","face","rate",
+                                                                  "type","is_emerging_market"] if c in tran_df.columns]
+                                        st.dataframe(tran_df[show_cols].reset_index(drop=True),
+                                                     use_container_width=True,
+                                                     height=min(250, 35*len(tran_df)+40))
+
+# ── TAB 2: PIVOT ──
+with tab2:
+    st.markdown(\'\'\'
+    <div class="section-header">
+        <div class="dot" style="background:var(--accent-amber)"></div>
+        <h3>Pivot: Configurable Dimensions</h3>
+    </div>\'\'\', unsafe_allow_html=True)
+    pcol1, pcol2, pcol3 = st.columns(3)
+    with pcol1:
+        row_dim = st.selectbox("Row Dimension", ["bond_ccy","cpty","type","is_emerging_market","structure"], index=0)
+    with pcol2:
+        col_dim = st.selectbox("Column Dimension", ["tran_type","final_bucket","bond_ccy","type"], index=0)
+    with pcol3:
+        metric = st.selectbox("Metric", ["principal","face","rate"], index=0)
+
+    pivot_df = df.groupby([row_dim, col_dim])[metric].agg(
+        "mean" if metric=="rate" else "sum"
+    ).unstack(fill_value=0)
+    if metric != "rate":
+        display_pivot = pivot_df.map(fmt_millions)
+    else:
+        display_pivot = pivot_df.map(fmt_rate)
+    st.dataframe(display_pivot, use_container_width=True, height=500)
+
+    st.markdown(\'\'\'
+    <div class="section-header" style="margin-top:2rem">
+        <div class="dot" style="background:var(--accent-purple)"></div>
+        <h3>Net Exposure by Currency (R − RR)</h3>
+    </div>\'\'\', unsafe_allow_html=True)
+    net_df = df.groupby(["bond_ccy","tran_type"])["principal"].sum().unstack(fill_value=0)
+    if "R"  in net_df.columns and "RR" in net_df.columns: net_df["Net (R-RR)"] = net_df["R"] - net_df["RR"]
+    elif "R"  in net_df.columns: net_df["Net (R-RR)"] = net_df["R"]
+    elif "RR" in net_df.columns: net_df["Net (R-RR)"] = -net_df["RR"]
+    st.dataframe(net_df.map(fmt_millions), use_container_width=True)
+
+# ── TAB 3: RAW TRADES ──
+with tab3:
+    st.markdown(\'\'\'
+    <div class="section-header">
+        <div class="dot" style="background:var(--accent-teal)"></div>
+        <h3>Raw Trade Level Data</h3>
+    </div>\'\'\', unsafe_allow_html=True)
+    rcol1, rcol2, rcol3 = st.columns([3,3,2])
+    with rcol1:
+        search = st.text_input("🔍 Search counterparty", "", placeholder="Type to filter...")
+    with rcol2:
+        sort_col = st.selectbox("Sort by", ["principal","face","rate","cpty","bond_ccy"], index=0)
+    with rcol3:
+        sort_asc = st.checkbox("Ascending", value=False)
+
+    view_df = df.copy()
+    if search: view_df = view_df[view_df["cpty"].str.contains(search, case=False, na=False)]
+    view_df = view_df.sort_values(sort_col, ascending=sort_asc)
+    view_df["rate"]      = view_df["rate"].apply(lambda x: f"{x:.4f}%")
+    view_df["principal"] = view_df["principal"].apply(fmt_millions)
+    view_df["face"]      = view_df["face"].apply(fmt_millions)
+    show_cols = [c for c in ["cpty","bond_ccy","tran_type","final_bucket","structure",
+                              "principal","face","rate","type","is_emerging_market"] if c in view_df.columns]
+    st.dataframe(view_df[show_cols].reset_index(drop=True), use_container_width=True, height=600)
+    st.markdown(f\'<div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);text-align:right;">{len(view_df):,} trades shown</div>\', unsafe_allow_html=True)
+'''
+
+with open("app.py", "w") as f:
+    f.write(app_code)
+
+print("✅ app.py written successfully!")
