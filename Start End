@@ -1,0 +1,18 @@
+!pip install streamlit pandas openpyxl numpy xlsxwriter pyngrok -q
+
+
+
+import subprocess
+import threading
+import time
+
+def run_streamlit():
+    subprocess.run(["streamlit", "run", "app.py",
+                    "--server.port=8501",
+                    "--server.headless=true"])
+
+t = threading.Thread(target=run_streamlit, daemon=True)
+t.start()
+time.sleep(3)
+print("✅ Dashboard is running!")
+print("👉 Open this in your browser: http://localhost:8501")
