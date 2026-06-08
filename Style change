@@ -1,0 +1,1887 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+from textwrap import dedent
+from io import BytesIO
+import warnings
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
+warnings.filterwarnings("ignore")
+
+# ─────────────────────────────────────────────
+#  PAGE CONFIG
+# ─────────────────────────────────────────────
+st.set_page_config(
+    page_title="OVERNIGHT REPO MONITOR",
+    page_icon="🏦",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# ─────────────────────────────────────────────
+#  BARCLAYS DESIGN SYSTEM  (CSS only)
+# ─────────────────────────────────────────────
+st.markdown("""
+<style>
+/* ── Google Fonts ─────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── Barclays Design Tokens ───────────────────── */
+:root {
+    --barclays-navy:        #00395D;
+    --barclays-cyan:        #00AEEF;
+    --barclays-cyan-dark:   #0090C8;
+    --barclays-cyan-light:  #E0F5FD;
+    --barclays-mid-blue:    #005D8F;
+    --bg-app:               #F0F4F8;
+    --bg-white:             #FFFFFF;
+    --bg-card:              #FFFFFF;
+    --bg-card-hover:        #F8FAFD;
+    --bg-sidebar:           #00395D;
+    --bg-table-header:      #00395D;
+    --bg-table-alt:         #F5F9FD;
+    --bg-total:             #E0F5FD;
+    --bg-grand-total:       #CCE9F6;
+    --bg-kpi-blue:          linear-gradient(135deg,#00395D 0%,#005D8F 100%);
+    --bg-kpi-cyan:          linear-gradient(135deg,#0090C8 0%,#00AEEF 100%);
+    --bg-kpi-teal:          linear-gradient(135deg,#007A99 0%,#00AEEF 100%);
+    --bg-kpi-amber:         linear-gradient(135deg,#B45309 0%,#D97706 100%);
+    --bg-kpi-green:         linear-gradient(135deg,#047857 0%,#059669 100%);
+    --bg-kpi-red:           linear-gradient(135deg,#991B1B 0%,#DC2626 100%);
+    --bg-kpi-purple:        linear-gradient(135deg,#4C1D95 0%,#7C3AED 100%);
+    --text-primary:         #0D1F2D;
+    --text-secondary:       #4A6073;
+    --text-muted:           #8BA3B5;
+    --text-on-dark:         #FFFFFF;
+    --text-on-cyan:         #FFFFFF;
+    --border:               #D4E3EE;
+    --border-focus:         #00AEEF;
+    --shadow-sm:            0 1px 3px rgba(0,57,93,0.08);
+    --shadow-md:            0 4px 12px rgba(0,57,93,0.10);
+    --shadow-lg:            0 8px 24px rgba(0,57,93,0.14);
+    --radius-sm:            6px;
+    --radius-md:            10px;
+    --radius-lg:            14px;
+    --font-body:            'DM Sans', 'Segoe UI', sans-serif;
+    --font-mono:            'DM Mono', 'Consolas', monospace;
+}
+
+/* ── Base App ──────────────────────────────────── */
+html, body, [class*="css"] {
+    font-family: var(--font-body) !important;
+}
+
+.stApp {
+    background: var(--bg-app) !important;
+}
+
+.main .block-container {
+    padding: 2rem 2.5rem 3rem 2.5rem !important;
+    max-width: 100% !important;
+    background: var(--bg-app);
+}
+
+/* ── Sidebar ─────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background: var(--bg-sidebar) !important;
+    border-right: 1px solid rgba(0,174,239,0.15) !important;
+}
+
+[data-testid="stSidebar"] > div:first-child {
+    padding-top: 0 !important;
+}
+
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stCheckbox label,
+[data-testid="stSidebar"] .stToggle label {
+    color: rgba(255,255,255,0.85) !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.82rem !important;
+}
+
+[data-testid="stSidebar"] .stFileUploader label {
+    color: rgba(255,255,255,0.85) !important;
+}
+
+/* sidebar multiselect */
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] > div > div {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(0,174,239,0.35) !important;
+    border-radius: var(--radius-sm) !important;
+    color: white !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] span[data-baseweb="tag"] {
+    background: rgba(0,174,239,0.25) !important;
+    border: 1px solid var(--barclays-cyan) !important;
+    color: #E0F5FD !important;
+    font-size: 0.72rem !important;
+    font-family: var(--font-mono) !important;
+    border-radius: 4px !important;
+}
+
+/* sidebar file uploader */
+[data-testid="stSidebar"] [data-testid="stFileUploader"] {
+    background: rgba(255,255,255,0.06) !important;
+    border: 2px dashed rgba(0,174,239,0.4) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 1rem !important;
+    transition: border-color 0.2s ease !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stFileUploader"]:hover {
+    border-color: var(--barclays-cyan) !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stFileUploader"] button {
+    background: rgba(0,174,239,0.2) !important;
+    border: 1px solid var(--barclays-cyan) !important;
+    color: #E0F5FD !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+/* sidebar number inputs */
+[data-testid="stSidebar"] [data-testid="stNumberInput"] input {
+    background: rgba(255,255,255,0.1) !important;
+    border: 1px solid rgba(0,174,239,0.3) !important;
+    color: white !important;
+    border-radius: var(--radius-sm) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.82rem !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stNumberInput"] input:focus {
+    border-color: var(--barclays-cyan) !important;
+    box-shadow: 0 0 0 2px rgba(0,174,239,0.25) !important;
+}
+
+/* sidebar selectbox */
+[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(0,174,239,0.35) !important;
+    color: white !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+/* sidebar toggle */
+[data-testid="stSidebar"] .stToggle {
+    background: rgba(255,255,255,0.05) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0.4rem 0.6rem !important;
+}
+
+/* ── Sidebar Header ──────────────────────────── */
+.sidebar-logo {
+    background: linear-gradient(135deg, #002D4F 0%, #00395D 100%);
+    border-bottom: 2px solid var(--barclays-cyan);
+    padding: 1.4rem 1.2rem 1rem 1.2rem;
+    margin: 0 -1rem 1.2rem -1rem;
+    text-align: left;
+}
+.sidebar-logo .logo-wordmark {
+    font-family: var(--font-body);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 0 0 2px 0;
+    line-height: 1;
+}
+.sidebar-logo .logo-cyan-bar {
+    width: 36px;
+    height: 3px;
+    background: var(--barclays-cyan);
+    border-radius: 2px;
+    margin: 6px 0 8px 0;
+}
+.sidebar-logo .logo-sub {
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.60);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 400;
+    margin: 0;
+}
+.sidebar-logo .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0,174,239,0.15);
+    border: 1px solid rgba(0,174,239,0.3);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-family: var(--font-mono);
+    font-size: 0.60rem;
+    color: var(--barclays-cyan);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 0.6rem;
+}
+
+/* ── Filter Labels ───────────────────────────── */
+.filter-section-title {
+    font-family: var(--font-mono) !important;
+    font-size: 0.60rem !important;
+    letter-spacing: 0.18em !important;
+    text-transform: uppercase !important;
+    color: rgba(255,255,255,0.40) !important;
+    margin: 1.2rem 0 0.6rem 0 !important;
+    padding-top: 0.8rem !important;
+    border-top: 1px solid rgba(255,255,255,0.08) !important;
+    display: block !important;
+}
+.filter-label {
+    font-family: var(--font-mono) !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0.10em !important;
+    text-transform: uppercase !important;
+    color: rgba(255,255,255,0.55) !important;
+    margin-bottom: 0.25rem !important;
+    margin-top: 0.7rem !important;
+    display: block !important;
+}
+
+/* ── Page Title Area ─────────────────────────── */
+.page-title-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5rem;
+    padding-bottom: 1.4rem;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 1.8rem;
+}
+.page-title-container h1 {
+    font-family: var(--font-body) !important;
+    font-size: 2.2rem !important;
+    font-weight: 700 !important;
+    color: var(--barclays-navy) !important;
+    letter-spacing: -0.02em !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+.page-title-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--barclays-cyan);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+}
+.page-title-tagline {
+    font-family: var(--font-body);
+    font-size: 0.80rem;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    margin: 0;
+    font-weight: 400;
+}
+.title-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--barclays-cyan);
+    color: white;
+    font-family: var(--font-mono);
+    font-size: 0.60rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+}
+.title-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(0.7); }
+}
+
+/* ── KPI Cards ───────────────────────────────── */
+.kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.1rem 0.9rem 1.1rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    min-height: 88px;
+}
+.kpi-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.kpi-card.blue::before   { background: var(--barclays-navy); }
+.kpi-card.cyan::before   { background: var(--barclays-cyan); }
+.kpi-card.teal::before   { background: #0090A8; }
+.kpi-card.amber::before  { background: #D97706; }
+.kpi-card.green::before  { background: #059669; }
+.kpi-card.red::before    { background: #DC2626; }
+.kpi-card.purple::before { background: #7C3AED; }
+
+.kpi-label {
+    font-family: var(--font-mono) !important;
+    font-size: 0.60rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.14em !important;
+    text-transform: uppercase !important;
+    color: var(--text-muted) !important;
+    margin-bottom: 0.4rem !important;
+    display: block !important;
+}
+.kpi-value {
+    font-family: var(--font-body) !important;
+    font-size: 1.45rem !important;
+    font-weight: 700 !important;
+    color: var(--barclays-navy) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.01em !important;
+}
+.kpi-sub {
+    font-family: var(--font-mono) !important;
+    font-size: 0.65rem !important;
+    color: var(--text-muted) !important;
+    margin-top: 0.3rem !important;
+    display: block !important;
+}
+.kpi-card.blue .kpi-value   { color: var(--barclays-navy) !important; }
+.kpi-card.cyan .kpi-value   { color: #0090C8 !important; }
+.kpi-card.teal .kpi-value   { color: #007A99 !important; }
+.kpi-card.amber .kpi-value  { color: #B45309 !important; }
+.kpi-card.green .kpi-value  { color: #047857 !important; }
+.kpi-card.red .kpi-value    { color: #B91C1C !important; }
+.kpi-card.purple .kpi-value { color: #6D28D9 !important; }
+
+/* ── Section Headers ─────────────────────────── */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 1.8rem 0 1rem 0;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+}
+.section-header h3 {
+    font-family: var(--font-body) !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    color: var(--barclays-navy) !important;
+    margin: 0 !important;
+}
+.dot {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+}
+
+/* ── Status / Data Info Bar ──────────────────── */
+.data-info-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--barclays-cyan);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.9rem;
+    margin: 0.5rem 0 0.8rem 0;
+    font-family: var(--font-mono);
+    font-size: 0.70rem;
+    color: var(--text-secondary);
+}
+
+/* ── Trade Tables ────────────────────────────── */
+.trade-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-body);
+    font-size: 0.80rem;
+    margin-top: 0.5rem;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.trade-table thead th {
+    background: var(--bg-table-header) !important;
+    color: #FFFFFF !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0.10em !important;
+    text-transform: uppercase !important;
+    padding: 0.65rem 0.7rem !important;
+    text-align: right !important;
+    border: none !important;
+    white-space: nowrap !important;
+    font-weight: 500 !important;
+}
+.trade-table thead th:first-child {
+    text-align: left !important;
+}
+.trade-table td {
+    padding: 0.42rem 0.7rem !important;
+    border-bottom: 1px solid var(--border) !important;
+    text-align: right !important;
+    color: var(--text-primary) !important;
+}
+.trade-table td:first-child {
+    text-align: left !important;
+    color: var(--text-secondary) !important;
+}
+.trade-table tr:hover td {
+    background: #EBF5FB !important;
+}
+.trade-table tr:nth-child(even) td {
+    background: var(--bg-table-alt);
+}
+.trade-table tr:nth-child(even):hover td {
+    background: #EBF5FB !important;
+}
+
+/* ── Empty State ─────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--text-muted);
+    background: var(--bg-white);
+    border-radius: var(--radius-lg);
+    border: 2px dashed var(--border);
+    margin: 2rem 0;
+}
+.empty-state h3 {
+    font-family: var(--font-body) !important;
+    font-size: 1.1rem !important;
+    color: var(--barclays-navy) !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+}
+.empty-state p {
+    font-family: var(--font-mono) !important;
+    font-size: 0.75rem !important;
+    color: var(--text-muted) !important;
+}
+
+/* ── Tabs ────────────────────────────────────── */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    background: var(--bg-white) !important;
+    border-bottom: 2px solid var(--border) !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
+    font-family: var(--font-body) !important;
+    font-size: 0.80rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.04em !important;
+    color: var(--text-muted) !important;
+    padding: 0.75rem 1.3rem !important;
+    border-bottom: 2px solid transparent !important;
+    background: transparent !important;
+    transition: all 0.2s ease !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+    color: var(--barclays-navy) !important;
+    background: var(--bg-table-alt) !important;
+}
+[data-testid="stTabs"] [aria-selected="true"] {
+    color: var(--barclays-cyan) !important;
+    border-bottom-color: var(--barclays-cyan) !important;
+    background: var(--bg-white) !important;
+    font-weight: 600 !important;
+}
+
+/* ── Download / Action Buttons ───────────────── */
+[data-testid="stDownloadButton"] button {
+    background: var(--barclays-navy) !important;
+    border: 1px solid var(--barclays-navy) !important;
+    color: white !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.80rem !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.04em !important;
+    padding: 0.55rem 1.1rem !important;
+    border-radius: var(--radius-sm) !important;
+    transition: all 0.2s ease !important;
+    box-shadow: var(--shadow-sm) !important;
+    width: 100% !important;
+}
+[data-testid="stDownloadButton"] button:hover {
+    background: var(--barclays-mid-blue) !important;
+    box-shadow: var(--shadow-md) !important;
+    transform: translateY(-1px) !important;
+}
+
+button[data-testid="baseButton-secondary"] {
+    background: var(--bg-white) !important;
+    border: 1px solid var(--barclays-cyan) !important;
+    color: var(--barclays-cyan) !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.80rem !important;
+    font-weight: 500 !important;
+    padding: 0.55rem 1.1rem !important;
+    border-radius: var(--radius-sm) !important;
+    transition: all 0.2s ease !important;
+}
+button[data-testid="baseButton-secondary"]:hover {
+    background: var(--barclays-cyan-light) !important;
+}
+
+/* ── Dataframe / Table Component ─────────────── */
+[data-testid="stDataFrame"] {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* ── Expanders ───────────────────────────────── */
+[data-testid="stExpander"] {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-sm) !important;
+    margin-bottom: 0.4rem !important;
+    background: var(--bg-white) !important;
+    overflow: hidden !important;
+}
+[data-testid="stExpander"] summary {
+    font-family: var(--font-body) !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+    color: var(--barclays-navy) !important;
+    padding: 0.7rem 1rem !important;
+    background: var(--bg-white) !important;
+    transition: background 0.15s ease !important;
+}
+[data-testid="stExpander"] summary:hover {
+    background: var(--bg-table-alt) !important;
+}
+[data-testid="stExpander"][open] summary {
+    border-bottom: 1px solid var(--border) !important;
+    background: #F0F8FD !important;
+}
+[data-testid="stExpander"] .streamlit-expanderContent {
+    padding: 0.8rem 1rem !important;
+    background: var(--bg-white) !important;
+}
+
+/* ── Selectbox (main) ────────────────────────── */
+.main [data-testid="stSelectbox"] > div > div {
+    background: var(--bg-white) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.82rem !important;
+}
+.main [data-testid="stSelectbox"] > div > div:focus-within {
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 2px rgba(0,174,239,0.15) !important;
+}
+
+/* ── Text inputs (search) ────────────────────── */
+.main [data-testid="stTextInput"] input {
+    background: var(--bg-white) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.82rem !important;
+    padding: 0.5rem 0.75rem !important;
+}
+.main [data-testid="stTextInput"] input:focus {
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 2px rgba(0,174,239,0.15) !important;
+}
+
+/* ── FX / Benchmark Panel Subheaders ─────────── */
+.panel-subheader {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--barclays-navy);
+    text-align: center;
+    background: #EBF5FB;
+    border: 1px solid #B8DAF0;
+    padding: 0.45rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.7rem;
+}
+
+/* ── KPI Table (email html) ──────────────────── */
+.kpi-table-container {
+    background: var(--bg-white);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1.2rem;
+}
+
+/* ── Hierarchy Table rows ────────────────────── */
+.hier-table-wrapper {
+    background: var(--bg-white);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ── Scrollbar ───────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-app); }
+::-webkit-scrollbar-thumb { background: #B8D4E5; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--barclays-mid-blue); }
+
+/* ── Checkbox ────────────────────────────────── */
+[data-testid="stCheckbox"] label {
+    font-family: var(--font-body) !important;
+    font-size: 0.80rem !important;
+    color: var(--text-primary) !important;
+}
+
+/* ── Toggle ──────────────────────────────────── */
+[data-testid="stToggle"] label {
+    font-family: var(--font-body) !important;
+    font-size: 0.80rem !important;
+}
+
+/* ── hr-style divider ────────────────────────── */
+.bar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1rem 0;
+    border: none;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────
+#  UTILITY / CALCULATION FUNCTIONS  (unchanged)
+# ─────────────────────────────────────────────
+
+def get_display_values(df_subset, use_usd):
+    currencies = df_subset["bond_ccy"].nunique()
+    if use_usd:
+        if "principal_usd" not in df_subset.columns or "face_usd" not in df_subset.columns:
+            return df_subset["principal"].sum(), df_subset["face"].sum(), "RAW"
+        return df_subset["principal_usd"].sum(), df_subset["face_usd"].sum(), "USD"
+    if currencies == 1:
+        ccy = df_subset["bond_ccy"].dropna().iloc[0]
+        return df_subset["principal"].sum(), df_subset["face"].sum(), ccy
+    else:
+        if "principal_usd" not in df_subset.columns or "face_usd" not in df_subset.columns:
+            return df_subset["principal"].sum(), df_subset["face"].sum(), "RAW"
+        return df_subset["principal_usd"].sum(), df_subset["face_usd"].sum(), "USD"
+
+
+def fmt_millions(val, suffix=""):
+    if pd.isna(val) or val == 0:
+        return "—"
+    abs_val = abs(val)
+    if abs_val >= 1e9:
+        return f"{val/1e9:.2f}B{suffix}"
+    if abs_val >= 1e6:
+        return f"{val/1e6:.1f}M{suffix}"
+    if abs_val >= 1e3:
+        return f"{val/1e3:.0f}K{suffix}"
+    return f"{val:.0f}{suffix}"
+
+
+def fmt_rate(val):
+    if pd.isna(val):
+        return "—"
+    return f"{val*100:.4f}%"
+
+
+def get_benchmark_name_for_ccy(ccy):
+    ccy = str(ccy).upper().strip()
+    if ccy == "EUR":
+        return "ESTR"
+    elif ccy == "GBP":
+        return "SONIA"
+    elif ccy == "USD":
+        return st.session_state.get("benchmark_name", "Term SOFR")
+    else:
+        return "Benchmark"
+
+
+def get_benchmark_rate_for_ccy(ccy):
+    ccy = str(ccy).upper().strip()
+    benchmarks = st.session_state.get("benchmarks", {
+        "Term SOFR": 0.0538,
+        "SOFR": 0.0538,
+        "ESTR": 0.0390,
+        "SONIA": 0.0528,
+    })
+    if ccy == "EUR":
+        return benchmarks.get("ESTR", np.nan)
+    if ccy == "GBP":
+        return benchmarks.get("SONIA", np.nan)
+    if ccy == "USD":
+        active_usd_benchmark = st.session_state.get("benchmark_name", "Term SOFR")
+        return benchmarks.get(active_usd_benchmark, np.nan)
+    return np.nan
+
+
+def fmt_spread(rate, benchmark_rate):
+    if pd.isna(rate) or pd.isna(benchmark_rate):
+        return "—"
+    return f"{(rate - benchmark_rate) * 10000:.0f} bps"
+
+
+def weighted_avg_rate(df_subset):
+    if df_subset.empty:
+        return np.nan
+    if df_subset["bond_ccy"].nunique() == 1:
+        weights = df_subset["principal"].abs()
+    else:
+        weights = df_subset["principal_usd"].abs()
+    rates = df_subset["rate"]
+    valid = weights > 0
+    if not valid.any():
+        return np.nan
+    return (rates[valid] * weights[valid]).sum() / weights[valid].sum()
+
+
+@st.cache_data(show_spinner=False)
+def load_data(file_bytes, fx_override=None):
+    try:
+        df = pd.read_excel(BytesIO(file_bytes), sheet_name="Trade Data")
+    except Exception:
+        df = pd.read_excel(BytesIO(file_bytes))
+
+    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+
+    required_cols = ["type", "cpty", "principal", "face", "rate", "tran_type"]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        st.error(f"Missing required columns: {missing}")
+        st.stop()
+
+    str_cols = df.select_dtypes(include=["object"]).columns
+    for c in str_cols:
+        df[c] = df[c].astype(str).str.strip()
+        df[c] = df[c].replace("nan", np.nan).replace("", np.nan)
+
+    if "bond_ccy" in df.columns:
+        df["bond_ccy"] = df["bond_ccy"].str.upper()
+
+    if "final_bucket" in df.columns:
+        df["final_bucket"] = df["final_bucket"].fillna("No Bucket").astype(str).str.strip()
+        df["final_bucket"] = df["final_bucket"].replace("nan", "No Bucket")
+
+    if "structure" in df.columns:
+        df["structure"] = df["structure"].fillna("Unknown")
+
+    # Rate normalisation
+    if df["rate"].median() > 20:
+        df["rate"] = df["rate"] / 100
+
+    FX = {
+        "USD": 1.0,
+        "EUR": 1.08,
+        "GBP": 1.25,
+        "JPY": 0.0068,
+        "CHF": 1.10,
+        "ZAR": 0.055,
+        "CAD": 0.74,
+        "AUD": 0.66,
+    }
+    if fx_override is not None:
+        FX.update(fx_override)
+
+    df["fx_rate"] = df["bond_ccy"].map(FX).fillna(1)
+    df["principal_usd"] = df["principal"] * df["fx_rate"]
+    df["face_usd"] = df["face"] * df["fx_rate"]
+
+    df = df[df["cpty"].notna()]
+    df = df[df["cpty"].str.strip() != ""]
+    df = df[(df["principal"] != 0) & (df["face"] != 0)]
+    df = df.drop_duplicates()
+
+    if df.empty:
+        st.error("No valid trades after cleaning.")
+        st.stop()
+    return df
+
+
+def apply_filters(df, sel_flag, sel_type, sel_em, sel_cpty, sel_ccy,
+                  sel_bucket, sel_tran, sel_book, sel_struct):
+    d = df.copy()
+    if sel_flag and "flag" in d.columns:
+        d = d[d["flag"].isin(sel_flag)]
+    if sel_type:
+        d = d[d["type"].isin(sel_type)]
+    if sel_em and "is_emerging_market" in d.columns:
+        d = d[d["is_emerging_market"].isin(sel_em)]
+    if sel_cpty:
+        d = d[d["cpty"].isin(sel_cpty)]
+    if sel_ccy:
+        d = d[d["bond_ccy"].isin(sel_ccy)]
+    if sel_bucket and "final_bucket" in d.columns:
+        d = d[d["final_bucket"].isin(sel_bucket)]
+    if sel_tran:
+        d = d[d["tran_type"].isin(sel_tran)]
+    if sel_book and "book" in d.columns:
+        d = d[d["book"].isin(sel_book)]
+    if sel_struct and "structure" in d.columns:
+        d = d[d["structure"].isin(sel_struct)]
+    return d
+
+
+def agg(df):
+    return {
+        "principal": df["principal"].sum(),
+        "face": df["face"].sum(),
+        "rate": weighted_avg_rate(df),
+        "count": len(df),
+    }
+
+
+def _ordered_unique(series):
+    return [x for x in series.dropna().tolist() if str(x).strip()]
+
+
+def build_hierarchy_export_df(df, use_usd=True):
+    rows = []
+
+    def get_vals(d):
+        if use_usd:
+            return d["face_usd"].sum(), d["principal_usd"].sum(), "USD"
+        if d["bond_ccy"].nunique() == 1:
+            ccy = d["bond_ccy"].dropna().iloc[0]
+            return d["face"].sum(), d["principal"].sum(), ccy
+        return d["face_usd"].sum(), d["principal_usd"].sum(), "USD"
+
+    type_order = list(dict.fromkeys(df["type"].dropna().tolist()))
+    for typ in type_order:
+        type_df = df[df["type"] == typ]
+        rows.append({
+            "Total in Core": str(typ),
+            "Face": None,
+            "Principal": None,
+            "FIF/COU repo rate": None,
+            "level": 0,
+            "row_type": "type",
+        })
+        spty_order = list(dict.fromkeys(type_df["cpty"].dropna().tolist()))
+        first_cpty = True
+        for cpty in spty_order:
+            cpty_df = type_df[type_df["cpty"] == cpty]
+            if not first_cpty:
+                rows.append({
+                    "Total in Core": "",
+                    "Face": None,
+                    "Principal": None,
+                    "FIF/COU repo rate": None,
+                    "level": 1,
+                    "row_type": "spacer",
+                })
+            first_cpty = False
+            cpty_face, cpty_principal, cpty_label = get_vals(cpty_df)
+            rows.append({
+                "Total in Core": str(cpty),
+                "Face": cpty_face,
+                "Principal": cpty_principal,
+                "FIF/COU repo rate": cpty_df["rate"].mean() if len(cpty_df) else None,
+                "level": 1,
+                "row_type": "cpty",
+            })
+            ccy_order = list(dict.fromkeys(cpty_df["bond_ccy"].dropna().tolist()))
+            for ccy in ccy_order:
+                ccy_df = cpty_df[cpty_df["bond_ccy"] == ccy]
+                ccy_face, ccy_principal, ccy_label = get_vals(ccy_df)
+                rows.append({
+                    "Total in Core": f"{ccy} ({ccy_label})",
+                    "Face": ccy_face,
+                    "Principal": ccy_principal,
+                    "FIF/COU repo rate": None,
+                    "level": 2,
+                    "row_type": "ccy",
+                })
+                bucket_order = list(dict.fromkeys(
+                    ccy_df["final_bucket"].fillna("No Bucket").tolist()
+                ))
+                for bucket in bucket_order:
+                    bkt_df = ccy_df[ccy_df["final_bucket"].fillna("No Bucket") == bucket]
+                    bkt_face, bkt_principal, bkt_label = get_vals(bkt_df)
+                    rows.append({
+                        "Total in Core": str(bucket),
+                        "Face": bkt_face,
+                        "Principal": bkt_principal,
+                        "FIF/COU repo rate": bkt_df["rate"].mean() if len(bkt_df) else None,
+                        "level": 3,
+                        "row_type": "bucket",
+                    })
+                    struct_order = list(dict.fromkeys(
+                        bkt_df["structure"].fillna("Unknown").tolist()
+                    ))
+                    for struct in struct_order:
+                        s_df = bkt_df[bkt_df["structure"].fillna("Unknown") == struct]
+                        s_face, s_principal, s_label = get_vals(s_df)
+                        rows.append({
+                            "Total in Core": str(struct),
+                            "Face": s_face,
+                            "Principal": s_principal,
+                            "FIF/COU repo rate": s_df["rate"].mean() if len(s_df) else None,
+                            "level": 4,
+                            "row_type": "structure",
+                        })
+        rows.append({
+            "Total in Core": "",
+            "Face": None,
+            "Principal": None,
+            "FIF/COU repo rate": None,
+            "level": 0,
+            "row_type": "blank",
+        })
+
+    grand_face, grand_principal, grand_label = get_vals(df)
+    rows.append({
+        "Total in Core": f"Grand Total ({grand_label})",
+        "Face": grand_face,
+        "Principal": grand_principal,
+        "FIF/COU repo rate": None,
+        "level": 0,
+        "row_type": "grand_total",
+    })
+    return pd.DataFrame(rows)
+
+
+def to_excel_export(df):
+    benchmark_name = st.session_state.get("benchmark_name", "Term SOFR")
+    benchmark_rate = st.session_state.get("benchmark_rate", 0.0363)
+    total_p, total_f, base_ccy = get_display_values(df, True)
+    avg_repo_rate = weighted_avg_rate(df[df["tran_type"] == "R"]) if "R" in df["tran_type"].values else np.nan
+    avg_rr_rate = weighted_avg_rate(df[df["tran_type"] == "RR"]) if "RR" in df["tran_type"].values else np.nan
+    spread_benchmark = (avg_repo_rate - benchmark_rate) if not pd.isna(avg_repo_rate) else np.nan
+    spreader_benchmark = (benchmark_rate - avg_rr_rate) if not pd.isna(avg_rr_rate) else np.nan
+    n_cpty = df["cpty"].nunique()
+    n_ccy = df["bond_ccy"].nunique()
+    net_p = df[df["tran_type"] == "R"]["principal_usd"].sum() - df[df["tran_type"] == "RR"]["principal_usd"].sum() if "tran_type" in df.columns else 0
+    rr_p = df[df["tran_type"] == "RR"]["principal_usd"].sum() if "tran_type" in df.columns else 0
+
+    kpi_labels = [
+        f"Total Principal ({base_ccy})",
+        f"Total Face ({base_ccy})",
+        "Net Exposure (USD)",
+        "Reverse Repo (USD)",
+        "Avg Repo Rate (R)",
+        "Avg RR Rate",
+        f"Repo vs {benchmark_name}",
+        f"{benchmark_name} vs RR",
+        "Trades",
+        "Counterparties",
+        "Currencies",
+    ]
+    kpi_values = [
+        fmt_millions(total_p),
+        fmt_millions(total_f),
+        fmt_millions(net_p),
+        fmt_millions(rr_p),
+        fmt_rate(avg_repo_rate),
+        fmt_rate(avg_rr_rate),
+        f"{spread_benchmark*10000:.0f} bps" if not pd.isna(spread_benchmark) else "—",
+        f"{spreader_benchmark*10000:.0f} bps" if not pd.isna(spreader_benchmark) else "—",
+        f"{len(df):,}",
+        f"{n_cpty}",
+        f"{n_ccy}",
+    ]
+
+    export_df = build_hierarchy_export_df(df, True)
+    buf = BytesIO()
+
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        kpi_df = pd.DataFrame([kpi_labels, kpi_values])
+        kpi_df.to_excel(writer, index=False, header=False, startrow=0,
+                        sheet_name="Hierarchy Export")
+        ws = writer.sheets["Hierarchy Export"]
+
+        start_row = 4
+        export_df.drop(columns=["level", "row_type"], errors="ignore").to_excel(
+            writer, index=False, startrow=start_row - 1, sheet_name="Hierarchy Export"
+        )
+
+        NAVY = "00395D"
+        CYAN_LIGHT = "E0F5FD"
+        TOTAL_BLUE = "BDD7EE"
+        WHITE = "FFFFFF"
+        HEADER_BG = "00395D"
+
+        header_fill = PatternFill(fill_type="solid", fgColor=HEADER_BG)
+        total_fill = PatternFill(fill_type="solid", fgColor=TOTAL_BLUE)
+        white_fill = PatternFill(fill_type="solid", fgColor=WHITE)
+        cyan_light_fill = PatternFill(fill_type="solid", fgColor="CCE9F6")
+
+        bold_font = Font(bold=True)
+        cpty_font = Font(bold=True, size=11)
+        type_font = Font(bold=True, size=12)
+        normal_font = Font(bold=False)
+        header_font = Font(bold=True, color="FFFFFF")
+
+        thin_side = Side(style="thin", color="D4E3EE")
+        medium_side = Side(style="medium", color="00395D")
+        thin_border = Border(left=thin_side, right=thin_side,
+                             top=thin_side, bottom=thin_side)
+        medium_top_border = Border(left=thin_side, right=thin_side,
+                                   top=medium_side, bottom=thin_side)
+        section_border = Border(left=thin_side, right=thin_side,
+                                top=medium_side, bottom=medium_side)
+
+        # KPI header row
+        for col_idx in range(1, len(kpi_labels) + 1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal="center")
+        for col_idx in range(1, len(kpi_values) + 1):
+            cell = ws.cell(row=2, column=col_idx)
+            cell.alignment = Alignment(horizontal="center")
+            cell.border = thin_border
+
+        ws.column_dimensions["A"].width = 30
+        ws.column_dimensions["B"].width = 18
+        ws.column_dimensions["C"].width = 18
+        ws.column_dimensions["D"].width = 16
+
+        for i, row in export_df.iterrows():
+            excel_row = start_row + i + 1
+            level = int(row.get("level", 0)) if pd.notna(row.get("level")) else 0
+            row_type = row.get("row_type", "")
+            label_cell = ws.cell(excel_row, 1)
+            face_cell = ws.cell(excel_row, 2)
+            principal_cell = ws.cell(excel_row, 3)
+            rate_cell = ws.cell(excel_row, 4)
+
+            for c in range(1, 5):
+                ws.cell(excel_row, c).fill = white_fill
+                ws.cell(excel_row, c).border = thin_border
+
+            label_cell.alignment = Alignment(horizontal="left", indent=level * 2)
+            face_cell.alignment = Alignment(horizontal="right")
+            principal_cell.alignment = Alignment(horizontal="right")
+            rate_cell.alignment = Alignment(horizontal="right")
+            face_cell.number_format = '#,##0'
+            principal_cell.number_format = '#,##0'
+            rate_cell.number_format = '0.00%'
+
+            if row_type == "type":
+                for c in range(1, 5):
+                    ws.cell(excel_row, c).fill = cyan_light_fill
+                    ws.cell(excel_row, c).border = section_border
+                label_cell.font = type_font
+            elif row_type == "cpty":
+                for c in range(1, 5):
+                    ws.cell(excel_row, c).fill = total_fill
+                    ws.cell(excel_row, c).border = medium_top_border
+                label_cell.font = cpty_font
+            elif row_type == "ccy":
+                label_cell.font = bold_font
+                face_cell.font = bold_font
+                principal_cell.font = bold_font
+            elif row_type == "structure":
+                label_cell.font = normal_font
+            elif row_type in ("type_total", "grand_total"):
+                for c in range(1, 5):
+                    ws.cell(excel_row, c).fill = total_fill
+                    ws.cell(excel_row, c).font = bold_font
+                    ws.cell(excel_row, c).border = section_border
+            elif row_type == "blank":
+                for c in range(1, 5):
+                    ws.cell(excel_row, c).fill = white_fill
+                    ws.cell(excel_row, c).border = Border()
+                    ws.cell(excel_row, c).value = None
+
+            if pd.notna(row.get("Face")) and row["Face"] < 0:
+                face_cell.font = Font(bold=face_cell.font.bold, color="FF0000")
+            if pd.notna(row.get("Principal")) and row["Principal"] < 0:
+                principal_cell.font = Font(bold=principal_cell.font.bold, color="FF0000")
+
+        ws.freeze_panes = ws.cell(row=start_row + 1, column=1)
+
+    return buf.getvalue()
+
+
+def fmt_num(val, suffix=""):
+    if pd.isna(val) or val == 0:
+        return "—"
+    try:
+        val = float(val)
+        formatted = f"{abs(val):,.0f}"
+        return f'<span style="color:red">-{formatted}{suffix}</span>' if val < 0 else f"{formatted}{suffix}"
+    except Exception:
+        return str(val)
+
+
+def fmt_pct(val):
+    if pd.isna(val):
+        return "—"
+    try:
+        return f"{float(val)*100:.2f}%"
+    except Exception:
+        return str(val)
+
+
+def get_email_html(export_df, kpi_data):
+    labels = [k for k, v in kpi_data]
+    values = [v for k, v in kpi_data]
+
+    header_row = "".join(
+        f'<th style="padding:6px 10px;border:1px solid #4f81bd;text-align:center;background:#00395D;color:white;font-family:Calibri,Arial;font-size:12px;">{label}</th>'
+        for label in labels
+    )
+    value_row = "".join(
+        f'<td style="padding:6px 10px;border:1px solid #4f81bd;text-align:center;font-family:Calibri,Arial;font-size:12px;">{value}</td>'
+        for value in values
+    )
+    kpi_table = f"""
+    <table style="border-collapse:collapse;font-family:Calibri,Arial;font-size:13px;width:100%;margin-bottom:20px;">
+      <thead><tr>{header_row}</tr></thead>
+      <tbody><tr style="background:#F0F8FD;">{value_row}</tr></tbody>
+    </table>"""
+
+    html_rows = []
+    for _, row in export_df.iterrows():
+        level = int(row.get("level", 0)) if pd.notna(row.get("level")) else 0
+        indent_px = level * 18
+        row_type = row.get("row_type", "")
+        label = row.get("Total in Core", "")
+        face = fmt_num(row.get("Face"))
+        principal = fmt_num(row.get("Principal"))
+        rate = fmt_pct(row.get("FIF/COU repo rate"))
+
+        if row_type == "type":
+            bg = "#CCE9F6"; font = "font-weight:bold;font-size:14px;"
+        elif row_type == "cpty":
+            bg = "#BDD7EE"; font = "font-weight:bold;"
+        elif row_type == "ccy":
+            bg = "#FFFFFF"; font = "font-weight:bold;"
+        elif row_type == "bucket":
+            bg = "#FFFFFF"; font = ""
+        elif row_type == "structure":
+            bg = "#FFFFFF"; font = ""
+        elif row_type == "grand_total":
+            bg = "#BDD7EE"; font = "font-weight:bold;"
+        elif row_type == "blank":
+            html_rows.append('<tr><td colspan="4" style="height:6px;"></td></tr>')
+            continue
+        else:
+            bg = "#FFFFFF"; font = ""
+
+        html_rows.append(f"""
+        <tr style="background-color:{bg};{font}">
+          <td style="padding:5px 5px 5px {indent_px+5}px;border:1px solid #d4e3ee;">{label}</td>
+          <td style="text-align:right;padding:5px;border:1px solid #d4e3ee;">{face}</td>
+          <td style="text-align:right;padding:5px;border:1px solid #d4e3ee;">{principal}</td>
+          <td style="text-align:right;padding:5px;border:1px solid #d4e3ee;">{rate}</td>
+        </tr>""")
+
+    filtered_table = f"""
+    <table style="border-collapse:collapse;font-family:Calibri,Arial;font-size:13px;width:100%;">
+      <thead>
+        <tr style="background-color:#00395D;font-weight:bold;">
+          <th style="padding:6px 8px;border:1px solid #4f81bd;text-align:left;color:white;">Total in Core</th>
+          <th style="padding:6px 8px;border:1px solid #4f81bd;text-align:right;color:white;">Face</th>
+          <th style="padding:6px 8px;border:1px solid #4f81bd;text-align:right;color:white;">Principal</th>
+          <th style="padding:6px 8px;border:1px solid #4f81bd;text-align:right;color:white;">FIF/COU repo rate</th>
+        </tr>
+      </thead>
+      <tbody>{''.join(html_rows)}</tbody>
+    </table>"""
+
+    return f"""
+    <html><body style="font-family:Calibri,Arial;font-size:13px;">
+      <p>Team,</p>
+      <p>Please find below the repo summary.</p>
+      <p><b>KPI Table</b></p>
+      {kpi_table}
+      <p><b>Filtered Table</b></p>
+      {filtered_table}
+      <p>Regards,<br>Snehal</p>
+    </body></html>"""
+
+
+def open_outlook_draft(html_body):
+    try:
+        import pythoncom
+        import win32com.client as win32
+        pythoncom.CoInitialize()
+        outlook = win32.Dispatch("outlook.application")
+        mail = outlook.CreateItem(0)
+        mail.To = ""
+        mail.Subject = "Repo Summary"
+        mail.HTMLBody = html_body
+        mail.Display()
+    except Exception as e:
+        st.error(f"Outlook error: {e}")
+    finally:
+        try:
+            import pythoncom
+            pythoncom.CoUninitialize()
+        except Exception:
+            pass
+
+
+# ─────────────────────────────────────────────
+#  SIDEBAR
+# ─────────────────────────────────────────────
+with st.sidebar:
+    # Logo / header
+    st.markdown("""
+    <div class="sidebar-logo">
+      <div class="logo-wordmark">Barclays</div>
+      <div class="logo-cyan-bar"></div>
+      <div class="logo-sub">Structured Credit</div>
+      <div class="logo-badge">● Repo Monitor</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    uploaded = st.file_uploader(
+        "Upload Excel (.xlsx)",
+        type=["xlsx"],
+        label_visibility="collapsed",
+    )
+
+    if uploaded:
+        file_bytes = uploaded.getvalue()
+
+        if "fx_override" not in st.session_state:
+            st.session_state["fx_override"] = {}
+
+        raw_df = load_data(file_bytes, st.session_state["fx_override"])
+
+        st.markdown(f"""
+        <div class="data-info-bar">
+          <span style="color:#00AEEF;">✓</span>
+          <span style="color:rgba(255,255,255,0.8);">
+            <strong style="color:white;">{len(raw_df):,}</strong>&nbsp;trades loaded
+          </span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        use_usd = st.toggle("Convert totals to USD", value=True)
+
+        def ms(label, col, icon=""):
+            if col not in raw_df.columns:
+                return []
+            vals = sorted(raw_df[col].dropna().unique().tolist())
+            st.markdown(
+                f'<div class="filter-label">{icon} {label}</div>',
+                unsafe_allow_html=True,
+            )
+            return st.multiselect(
+                label, vals, default=[],
+                label_visibility="collapsed", key=f"f_{col}"
+            )
+
+        st.markdown('<span class="filter-section-title">Filters</span>', unsafe_allow_html=True)
+        sel_struct  = ms("Structure",         "structure",          "▪")
+        sel_cpty    = ms("Counterparty",       "cpty",               "◈")
+        sel_flag    = ms("Flag",               "flag",               "⚑")
+        sel_tran    = ms("Transaction Type",   "tran_type",          "⇄")
+        sel_type    = ms("Client / Hedge",     "type",               "⊞")
+        sel_ccy     = ms("Currency",           "bond_ccy",           "¤")
+        sel_bucket  = ms("Type of Security",   "final_bucket",       "◉")
+        sel_book    = ms("Book",               "book",               "☰")
+        sel_em      = ms("Emerging Market",    "is_emerging_market", "◎")
+
+        raw_df = load_data(file_bytes, st.session_state["fx_override"])
+        st.markdown('<div class="bar-divider"></div>', unsafe_allow_html=True)
+    else:
+        raw_df = None
+        use_usd = True
+        sel_flag = sel_type = sel_em = sel_cpty = []
+        sel_ccy = sel_bucket = sel_tran = sel_book = sel_struct = []
+
+
+# ─────────────────────────────────────────────
+#  PAGE TITLE
+# ─────────────────────────────────────────────
+st.markdown("""
+<div class="page-title-container">
+  <div>
+    <div class="page-title-eyebrow">Barclays · Structured Credit</div>
+    <h1>Repo Monitor</h1>
+    <p class="page-title-tagline">Hierarchical drill-down · Multi-currency · Real-time filter</p>
+  </div>
+  <div style="margin-left:auto;">
+    <span class="title-badge">Live</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+#  EMPTY STATE (no file uploaded)
+# ─────────────────────────────────────────────
+if raw_df is None:
+    st.markdown("""
+    <div class="empty-state">
+      <div style="font-size:3rem;margin-bottom:1rem;">📂</div>
+      <h3>Upload your trade data to begin</h3>
+      <p>Excel file · Sheet: "Trade Data"<br>
+         Required columns: type, cpty, bond_ccy, final_bucket,<br>
+         tran_type, structure, principal, face, rate</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.stop()
+
+# ─────────────────────────────────────────────
+#  PANEL LAYOUT  (main content + FX panel)
+# ─────────────────────────────────────────────
+main_panel, _spacer, fx_panel = st.columns([8.5, 0.2, 1.3])
+
+with main_panel:
+    df = apply_filters(raw_df, sel_flag, sel_type, sel_em,
+                       sel_cpty, sel_ccy, sel_bucket, sel_tran, sel_book, sel_struct)
+
+    if len(df) == 0:
+        st.markdown("""
+        <div class="empty-state">
+          <div style="font-size:2rem;margin-bottom:0.6rem;">🔍</div>
+          <h3>No data for selected filters</h3>
+          <p>Adjust your filter selections in the sidebar.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.stop()
+
+    # ── KPI computations ──────────────────────
+    total_p, total_f, base_ccy = get_display_values(df, use_usd)
+
+    repo_df = df[df["tran_type"] == "R"] if "tran_type" in df.columns else pd.DataFrame(columns=df.columns)
+    rr_df   = df[df["tran_type"] == "RR"] if "tran_type" in df.columns else pd.DataFrame(columns=df.columns)
+
+    avg_repo_rate = weighted_avg_rate(repo_df) if len(repo_df) else np.nan
+    avg_rr_rate   = weighted_avg_rate(rr_df)   if len(rr_df)   else np.nan
+
+    benchmark_name = st.session_state.get("benchmark_name", "Term SOFR")
+    benchmark_rate = st.session_state.get("benchmark_rate", 0.0363)
+
+    spread_benchmark  = (avg_repo_rate - benchmark_rate) if not pd.isna(avg_repo_rate) else np.nan
+    spreader_benchmark = (benchmark_rate - avg_rr_rate)  if not pd.isna(avg_rr_rate) else np.nan
+
+    n_cpty = df["cpty"].nunique()
+    n_ccy  = df["bond_ccy"].nunique()
+
+    repo_p = repo_df["principal_usd"].sum() if "principal_usd" in repo_df.columns else 0
+    rr_p   = rr_df["principal_usd"].sum()   if "principal_usd" in rr_df.columns  else 0
+    net_p  = repo_p - rr_p
+
+    # ── KPI Bar ───────────────────────────────
+    kpi_cols = st.columns(8)
+
+    with kpi_cols[0]:
+        st.markdown(f"""
+        <div class="kpi-card blue">
+          <span class="kpi-label">Total Principal ({base_ccy})</span>
+          <div class="kpi-value">{fmt_millions(total_p)}</div>
+          <span class="kpi-sub">{len(df):,} trades</span>
+        </div>""", unsafe_allow_html=True)
+
+    with kpi_cols[1]:
+        st.markdown(f"""
+        <div class="kpi-card cyan">
+          <span class="kpi-label">Total Face ({base_ccy})</span>
+          <div class="kpi-value">{fmt_millions(total_f)}</div>
+          <span class="kpi-sub">{n_ccy} currencies</span>
+        </div>""", unsafe_allow_html=True)
+
+    with kpi_cols[2]:
+        net_color = "red" if net_p < 0 else "purple"
+        st.markdown(f"""
+        <div class="kpi-card {net_color}">
+          <span class="kpi-label">Net Exposure (USD)</span>
+          <div class="kpi-value">{fmt_millions(net_p)}</div>
+          <span class="kpi-sub">Repo – Rev.Repo</span>
+        </div>""", unsafe_allow_html=True)
+
+    with kpi_cols[3]:
+        st.markdown(f"""
+        <div class="kpi-card purple">
+          <span class="kpi-label">Rev. Repo (USD)</span>
+          <div class="kpi-value">{fmt_millions(rr_p)}</div>
+          <span class="kpi-sub">Cash lent</span>
+        </div>""", unsafe_allow_html=True)
+
+    with kpi_cols[4]:
+        st.markdown(f"""
+        <div class="kpi-card teal">
+          <span class="kpi-label">Avg Repo Rate (R)</span>
+          <div class="kpi-value">{fmt_rate(avg_repo_rate)}</div>
+          <span class="kpi-sub">Weighted avg</span>
+        </div>""", unsafe_allow_html=True)
+
+    with kpi_cols[5]:
+        spread_color = "red" if (not pd.isna(spread_benchmark) and spread_benchmark < 0) else "green"
+        st.markdown(f"""
+        <div class="kpi-card {spread_color}">
+          <span class="kpi-label">Repo vs {benchmark_name}</span>
+          <div class="kpi-value">{f"{spread_benchmark*10000:.0f} bps" if not pd.isna(spread_benchmark) else "—"}</div>
+          <span class="kpi-sub">{benchmark_name}: {fmt_rate(benchmark_rate)}</span>
+        </div>""", unsafe_allow_html=True)
+
+    with kpi_cols[6]:
+        st.markdown(f"""
+        <div class="kpi-card teal">
+          <span class="kpi-label">Avg RR Rate</span>
+          <div class="kpi-value">{fmt_rate(avg_rr_rate)}</div>
+          <span class="kpi-sub">Cash lent rate</span>
+        </div>""", unsafe_allow_html=True)
+
+    with kpi_cols[7]:
+        spreader_color = "red" if (not pd.isna(spreader_benchmark) and spreader_benchmark < 0) else "amber"
+        st.markdown(f"""
+        <div class="kpi-card {spreader_color}">
+          <span class="kpi-label">{benchmark_name} vs RR</span>
+          <div class="kpi-value">{f"{spreader_benchmark*10000:.0f} bps" if not pd.isna(spreader_benchmark) else "—"}</div>
+          <span class="kpi-sub">{n_cpty} cptys</span>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-muted);margin-top:0.5rem;margin-bottom:1rem;">
+      All totals converted to USD &nbsp;·&nbsp; Currency sections shown in local denomination
+    </div>""", unsafe_allow_html=True)
+
+    # ── TABS ──────────────────────────────────
+    tab1, tab2, tab3 = st.tabs(["  🏗  HIERARCHY VIEW  ", "  ⊞  PIVOT TABLE  ", "  ≡  RAW TRADES  "])
+
+    # ═══════════════════════════════════════════
+    #  TAB 1 – HIERARCHY VIEW
+    # ═══════════════════════════════════════════
+    with tab1:
+        st.markdown("""
+        <div class="section-header">
+          <div class="dot" style="background:var(--barclays-cyan);"></div>
+          <h3>Counterparty → Currency → Bucket → Tran Type → Structure</h3>
+        </div>""", unsafe_allow_html=True)
+
+        cpty_agg = df.groupby("cpty").agg(
+            principal=("principal_usd", "sum"),
+            face=("face_usd", "sum"),
+            count=("principal", "count"),
+        )
+
+        for cpty, cpty_data in cpty_agg.iterrows():
+            cpty_df = df[df["cpty"] == cpty]
+            n_ccys = cpty_df["bond_ccy"].nunique()
+            disp_p, disp_f, ccy_label = get_display_values(cpty_df, use_usd)
+            cpty_rate = weighted_avg_rate(cpty_df)
+
+            if n_ccys == 1:
+                cpty_ccy = cpty_df["bond_ccy"].dropna().iloc[0]
+                cpty_bmk_rate = get_benchmark_rate_for_ccy(cpty_ccy)
+                cpty_bmk_name = get_benchmark_name_for_ccy(cpty_ccy)
+                cpty_spread = fmt_spread(cpty_rate, cpty_bmk_rate)
+                cpty_spread_text = f"Spread vs {cpty_bmk_name}: {cpty_spread}"
+            else:
+                cpty_spread_text = "Spread: Mixed"
+
+            with st.expander(
+                f"**{cpty}**  ·  Face: {fmt_millions(disp_f)}  ·  Principal: {fmt_millions(disp_p)} ({ccy_label})"
+                f"  ·  Rate: {fmt_rate(cpty_rate)}  ·  {cpty_spread_text}"
+                f"  ·  {n_ccys} CCY  ·  {int(cpty_data['count'])} trades",
+                expanded=False,
+            ):
+                ccy_agg = cpty_df.groupby("bond_ccy").agg(
+                    principal=("principal", "sum"),
+                    face=("face", "sum"),
+                    count=("principal", "count"),
+                ).sort_values("principal", ascending=False)
+
+                for ccy, ccy_data in ccy_agg.iterrows():
+                    ccy_df = cpty_df[cpty_df["bond_ccy"] == ccy]
+                    ccy_rate = weighted_avg_rate(ccy_df)
+                    ccy_bmk_name = get_benchmark_name_for_ccy(ccy)
+                    ccy_bmk_rate = get_benchmark_rate_for_ccy(ccy)
+                    ccy_spread = fmt_spread(ccy_rate, ccy_bmk_rate)
+
+                    with st.expander(
+                        f"**{ccy}**  ·  Principal: {fmt_millions(ccy_data['principal'])}"
+                        f"  ·  Face: {fmt_millions(ccy_data['face'])}"
+                        f"  ·  Rate: {fmt_rate(ccy_rate)}"
+                        f"  ·  Spread vs {ccy_bmk_name}: {ccy_spread}"
+                        f"  ·  {int(ccy_data['count'])} trades",
+                        expanded=False,
+                    ):
+                        bucket_agg = ccy_df.groupby("final_bucket").agg(
+                            principal=("principal", "sum"),
+                            face=("face", "sum"),
+                            count=("principal", "count"),
+                        ).reset_index()
+
+                        for _, brow in bucket_agg.iterrows():
+                            bucket = brow["final_bucket"]
+                            bkt_df = ccy_df[ccy_df["final_bucket"] == bucket]
+                            bkt_rate = weighted_avg_rate(bkt_df)
+                            bucket_bmk_name = get_benchmark_name_for_ccy(ccy)
+                            bucket_bmk_rate = get_benchmark_rate_for_ccy(ccy)
+                            bucket_spread = fmt_spread(bkt_rate, bucket_bmk_rate)
+
+                            with st.expander(
+                                f"**{bucket}**  ·  Principal: {fmt_millions(brow['principal'])}"
+                                f"  ·  Face: {fmt_millions(brow['face'])}"
+                                f"  ·  Rate: {fmt_rate(bkt_rate)}"
+                                f"  ·  Spread vs {bucket_bmk_name}: {bucket_spread}"
+                                f"  ·  {int(brow['count'])} trades",
+                                expanded=False,
+                            ):
+                                for tran_type in bkt_df["tran_type"].dropna().unique():
+                                    tran_df = bkt_df[bkt_df["tran_type"] == tran_type]
+                                    if not len(tran_df):
+                                        continue
+                                    ta = agg(tran_df)
+                                    tran_rate = weighted_avg_rate(tran_df)
+                                    tran_bmk_name = get_benchmark_name_for_ccy(ccy)
+                                    tran_bmk_rate = get_benchmark_rate_for_ccy(ccy)
+                                    tran_spread = fmt_spread(tran_rate, tran_bmk_rate)
+
+                                    with st.expander(
+                                        f"**{tran_type}**  ·  Principal: {fmt_millions(ta['principal'])}"
+                                        f"  ·  Face: {fmt_millions(ta['face'])}"
+                                        f"  ·  Rate: {fmt_rate(tran_rate)}"
+                                        f"  ·  Spread vs {tran_bmk_name}: {tran_spread}"
+                                        f"  ·  {ta['count']} trades",
+                                        expanded=False,
+                                    ):
+                                        struct_agg = tran_df.groupby("structure").agg(
+                                            principal=("principal", "sum"),
+                                            face=("face", "sum"),
+                                            count=("principal", "count"),
+                                        ).reset_index().sort_values("principal", ascending=False)
+
+                                        rows_html = []
+                                        for _, sr in struct_agg.iterrows():
+                                            struct_df = tran_df[tran_df["structure"] == sr["structure"]]
+                                            struct_rate = weighted_avg_rate(struct_df)
+                                            struct_bmk_name = get_benchmark_name_for_ccy(ccy)
+                                            struct_bmk_rate = get_benchmark_rate_for_ccy(ccy)
+                                            struct_spread = fmt_spread(struct_rate, struct_bmk_rate)
+                                            rows_html.append(f"""
+                                            <tr>
+                                              <td>{sr['structure']}</td>
+                                              <td>{fmt_millions(sr['principal'])}</td>
+                                              <td>{fmt_millions(sr['face'])}</td>
+                                              <td style="color:#0090C8;">{fmt_rate(struct_rate)}</td>
+                                              <td>{struct_spread}</td>
+                                              <td>{int(sr['count'])}</td>
+                                            </tr>""")
+
+                                        table_html = f"""
+                                        <div class="hier-table-wrapper">
+                                        <table class="trade-table">
+                                          <thead><tr>
+                                            <th>Structure</th>
+                                            <th>Principal</th>
+                                            <th>Face</th>
+                                            <th>Avg Rate</th>
+                                            <th>Spread</th>
+                                            <th>Trades</th>
+                                          </tr></thead>
+                                          <tbody>{''.join(rows_html)}</tbody>
+                                        </table></div>"""
+                                        st.markdown(table_html.strip(), unsafe_allow_html=True)
+
+    # ═══════════════════════════════════════════
+    #  TAB 2 – PIVOT
+    # ═══════════════════════════════════════════
+    with tab2:
+        st.markdown("""
+        <div class="section-header">
+          <div class="dot" style="background:#D97706;"></div>
+          <h3>Pivot: Configurable Dimensions</h3>
+        </div>""", unsafe_allow_html=True)
+
+        pcol1, pcol2, pcol3 = st.columns(3)
+        with pcol1:
+            row_dim = st.selectbox(
+                "Row Dimension",
+                ["bond_ccy", "cpty", "type", "is_emerging_market", "structure"],
+                index=0,
+            )
+        with pcol2:
+            col_dim = st.selectbox(
+                "Column Dimension",
+                ["tran_type", "final_bucket", "bond_ccy", "type"],
+                index=0,
+            )
+        with pcol3:
+            metric = st.selectbox("Metric", ["principal", "face", "rate"], index=0)
+
+        pivot_df = df.groupby([row_dim, col_dim])[metric].agg(
+            "mean" if metric == "rate" else "sum"
+        ).unstack(fill_value=0)
+
+        if metric != "rate":
+            display_pivot = pivot_df.map(fmt_millions)
+        else:
+            display_pivot = pivot_df.map(fmt_rate)
+
+        st.dataframe(display_pivot, use_container_width=True, height=500)
+
+        st.markdown("""
+        <div class="section-header" style="margin-top:2rem;">
+          <div class="dot" style="background:#7C3AED;"></div>
+          <h3>Net Exposure by Currency (R vs RR)</h3>
+        </div>""", unsafe_allow_html=True)
+
+        if "tran_type" in df.columns:
+            net_df = df.groupby(["bond_ccy", "tran_type"])["principal"].sum().unstack(fill_value=0)
+            if "R" in net_df.columns and "RR" in net_df.columns:
+                net_df["Net (R-RR)"] = net_df["R"] - net_df["RR"]
+            elif "R" in net_df.columns:
+                net_df["Net (R-RR)"] = net_df["R"]
+            elif "RR" in net_df.columns:
+                net_df["Net (R-RR)"] = -net_df["RR"]
+            st.dataframe(net_df.map(fmt_millions), use_container_width=True)
+
+    # ═══════════════════════════════════════════
+    #  TAB 3 – RAW TRADES
+    # ═══════════════════════════════════════════
+    with tab3:
+        st.markdown("""
+        <div class="section-header">
+          <div class="dot" style="background:#059669;"></div>
+          <h3>Raw Trade Level Data</h3>
+        </div>""", unsafe_allow_html=True)
+
+        rcol1, rcol2, rcol3 = st.columns([3, 3, 2])
+        with rcol1:
+            search = st.text_input(
+                "Search counterparty", "", placeholder="Type to filter..."
+            )
+        with rcol2:
+            sort_col = st.selectbox(
+                "Sort by",
+                ["principal", "face", "rate", "cpty", "bond_ccy"],
+                index=0,
+            )
+        with rcol3:
+            sort_asc = st.checkbox("Ascending", value=False)
+
+        view_df = df.copy()
+        if search:
+            view_df = view_df[
+                view_df["cpty"].str.contains(search, case=False, na=False)
+            ]
+        if sort_col in view_df.columns:
+            view_df = view_df.sort_values(sort_col, ascending=sort_asc)
+
+        col_map = {
+            "tran_type": "Tran Type",
+            "structure": "Structure",
+            "cpty": "Cpty",
+            "pref_sec_code": "ISIN",
+            "book": "Book",
+            "face": "Face",
+            "bond_ccy": "Bond Ccy",
+            "cash_ccy": "Cash Ccy",
+            "fx_rate": "FX Rate",
+            "original_pool_factor": "Pool Factor",
+            "original_inflation_factor": "Inflation Factor",
+            "dirty_price": "Dirty Price",
+            "hc": "HC",
+            "rate": "Rate",
+            "var_index": "Var Index",
+            "var_spread": "Var Spread",
+            "principal": "Principal",
+            "start_date": "Start Date",
+            "end_date": "End Date",
+        }
+        available_cols = [c for c in col_map.keys() if c in view_df.columns]
+        display_df = view_df[available_cols].rename(columns=col_map)
+
+        def safe_format(series, fmt):
+            s = pd.to_numeric(series, errors="coerce")
+            return s.map(lambda x: fmt(x) if pd.notna(x) else "")
+
+        if "Face" in display_df.columns:
+            display_df["Face"] = safe_format(display_df["Face"], lambda x: f"{x:,.0f}")
+        if "Principal" in display_df.columns:
+            display_df["Principal"] = safe_format(display_df["Principal"], lambda x: f"{x:,.0f}")
+        if "Rate" in display_df.columns:
+            display_df["Rate"] = safe_format(display_df["Rate"], lambda x: f"{x*100:.4f}%")
+        if "Dirty Price" in display_df.columns:
+            display_df["Dirty Price"] = safe_format(display_df["Dirty Price"], lambda x: f"{x:.4f}")
+        if "HC" in display_df.columns:
+            display_df["HC"] = safe_format(display_df["HC"], lambda x: f"{x:.2%}")
+        if "Var Spread" in display_df.columns:
+            cleaned = (
+                display_df["Var Spread"]
+                .astype(str)
+                .str.replace("bps", "", case=False)
+                .str.replace("%", "")
+                .str.replace(",", "")
+                .str.strip()
+            )
+            cleaned = pd.to_numeric(cleaned, errors="coerce")
+            display_df["Var Spread"] = cleaned.map(
+                lambda x: f"{x:.2f}" if pd.notna(x) else ""
+            )
+
+        st.dataframe(
+            display_df.reset_index(drop=True),
+            use_container_width=True,
+            height=600,
+        )
+
+        st.markdown(
+            f'<div style="font-family:var(--font-mono);font-size:0.62rem;'
+            f'color:var(--text-muted);text-align:right;">'
+            f'{len(display_df):,} trades shown</div>',
+            unsafe_allow_html=True,
+        )
+
+
+# ─────────────────────────────────────────────
+#  FX + BENCHMARK PANEL
+# ─────────────────────────────────────────────
+with fx_panel:
+    # ── Export / Email buttons ─────────────────
+    st.download_button(
+        "⬇ Export Table",
+        data=to_excel_export(df),
+        file_name="repo_hierarchy_export.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+    )
+    if st.button("✉ Send via Outlook", use_container_width=True):
+        export_df_email = build_hierarchy_export_df(df, use_usd=use_usd)
+        benchmark_name_e = st.session_state.get("benchmark_name", "Term SOFR")
+        benchmark_rate_e = st.session_state.get("benchmark_rate", 0.0363)
+        total_p_e, total_f_e, base_ccy_e = get_display_values(df, True)
+        kpi_data_email = [
+            (f"Total Principal ({base_ccy_e})", fmt_millions(total_p)),
+            (f"Total Face ({base_ccy_e})", fmt_millions(total_f)),
+            ("Net Exposure (USD)", fmt_millions(net_p)),
+            ("Reverse Repo (USD)", fmt_millions(rr_p)),
+            (f"Avg Repo Rate (R)", fmt_rate(avg_repo_rate)),
+            ("Avg RR Rate", fmt_rate(avg_rr_rate)),
+            (f"Repo vs {benchmark_name_e}",
+             f"{spread_benchmark*10000:.0f} bps" if not pd.isna(spread_benchmark) else "—"),
+            (f"{benchmark_name_e} vs RR",
+             f"{spreader_benchmark*10000:.0f} bps" if not pd.isna(spreader_benchmark) else "—"),
+            (f"{benchmark_name_e} Rate", fmt_rate(benchmark_rate_e)),
+            ("Trade Count", f"{len(df):,}"),
+            ("Counterparties", f"{n_cpty}"),
+            ("Currencies", f"{n_ccy}"),
+        ]
+        html_body = get_email_html(export_df_email, kpi_data_email)
+        open_outlook_draft(html_body)
+
+    st.markdown('<div style="height:0.6rem;"></div>', unsafe_allow_html=True)
+
+    # ── FX Controls ───────────────────────────
+    st.markdown('<div class="panel-subheader">FX Control</div>', unsafe_allow_html=True)
+
+    default_fx_map = {
+        "USD": 1.0, "EUR": 1.08, "GBP": 1.25, "JPY": 0.0068,
+        "CHF": 1.10, "ZAR": 0.055, "CAD": 0.74, "AUD": 0.66,
+    }
+    ccy_list = sorted(raw_df["bond_ccy"].dropna().unique().tolist())
+    ccy_list = [ccy for ccy in ccy_list if ccy != "USD"]
+
+    for ccy in ccy_list:
+        st.markdown(
+            f'<div style="font-size:0.62rem;font-family:var(--font-mono);'
+            f'color:var(--text-muted);margin-top:0.4rem;">{ccy}</div>',
+            unsafe_allow_html=True,
+        )
+        fx_val = st.number_input(
+            label=ccy,
+            min_value=0.0,
+            value=float(st.session_state["fx_override"].get(ccy, default_fx_map.get(ccy, 1.0))),
+            step=0.0001,
+            format="%.4f",
+            key=f"fx_{ccy}",
+            label_visibility="collapsed",
+        )
+        st.session_state["fx_override"][ccy] = fx_val
+
+    st.markdown(
+        '<div style="font-size:0.60rem;color:#059669;font-family:var(--font-mono);'
+        'margin-top:0.4rem;">✓ Live FX override applied</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div style="height:0.5rem;"></div>', unsafe_allow_html=True)
+
+    # ── Benchmark Controls ────────────────────
+    st.markdown('<div class="panel-subheader">Benchmark</div>', unsafe_allow_html=True)
+
+    default_benchmarks = {
+        "3M Term SOFR": 0.0365,
+        "SOFR":         0.0362,
+        "ESTR":         0.0193,
+        "SONIA":        0.0323,
+    }
+
+    if "benchmarks" not in st.session_state:
+        st.session_state["benchmarks"] = default_benchmarks.copy()
+    if "benchmark_name" not in st.session_state:
+        st.session_state["benchmark_name"] = "3M Term SOFR"
+
+    st.markdown(
+        '<div style="font-size:0.62rem;font-family:var(--font-mono);'
+        'color:var(--text-muted);margin-bottom:0.2rem;">Active Benchmark</div>',
+        unsafe_allow_html=True,
+    )
+    selected_benchmark = st.selectbox(
+        "Benchmark",
+        options=list(st.session_state["benchmarks"].keys()),
+        index=list(st.session_state["benchmarks"].keys()).index(
+            st.session_state["benchmark_name"]
+        ),
+        label_visibility="collapsed",
+    )
+    st.session_state["benchmark_name"] = selected_benchmark
+
+    for bmk, val in st.session_state["benchmarks"].items():
+        st.markdown(
+            f'<div style="font-size:0.62rem;font-family:var(--font-mono);'
+            f'color:var(--text-muted);margin-top:0.4rem;">{bmk}</div>',
+            unsafe_allow_html=True,
+        )
+        input_val = st.number_input(
+            label=bmk,
+            min_value=0.0,
+            value=float(val),
+            step=0.0001,
+            format="%.4f",
+            key=f"bmk_{bmk}",
+            label_visibility="collapsed",
+        )
+        st.session_state["benchmarks"][bmk] = input_val
+
+    st.session_state["benchmark_rate"] = st.session_state["benchmarks"][selected_benchmark]
+
+    st.markdown(
+        '<div style="font-size:0.60rem;color:#059669;font-family:var(--font-mono);'
+        'margin-top:0.4rem;">✓ Benchmark rates active</div>',
+        unsafe_allow_html=True,
+    )
