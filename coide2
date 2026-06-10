@@ -1,0 +1,871 @@
+st.markdown("""
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   BARCLAYS BLUEPRINT  ·  Repo Monitor  ·  Design System v3
+   Inspired by: Barclays Blueprint, The Portal motif, Active Blue,
+   Midnight Navy, WCAG-AA colour pairs, elevated card system.
+═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ─────────────────────────────────────────────────────────────
+   DESIGN TOKENS  — Barclays Blueprint extended palette
+───────────────────────────────────────────────────────────── */
+:root {
+    /* Core brand */
+    --midnight:        #00182B;
+    --midnight-mid:    #00263D;
+    --navy:            #00395D;
+    --navy-surface:    #004A7A;
+    --active-blue:     #00AFE9;
+    --active-blue-80:  #33BFee;
+    --active-blue-20:  #D6F3FC;
+    --active-blue-10:  #EBF9FE;
+    --sky:             #7DD6F5;
+    --ice:             #C8ECFA;
+
+    /* Neutral scale — Blueprint cool-grays */
+    --stone-100:       #F5F7FA;
+    --stone-200:       #EBF0F5;
+    --stone-300:       #D8E3EC;
+    --stone-400:       #B0C4D4;
+    --stone-500:       #7A96A8;
+    --stone-600:       #4A6073;
+    --stone-700:       #2D3F4E;
+
+    /* Semantic accents — Blueprint expanded palette */
+    --emerald:         #00875A;
+    --emerald-bg:      #E3F5EE;
+    --scarlet:         #C8102E;
+    --scarlet-bg:      #FDE8EB;
+    --amber:           #C67B00;
+    --amber-bg:        #FEF3DC;
+    --violet:          #5C2D91;
+    --violet-bg:       #EDE6F6;
+    --teal:            #007E8A;
+    --teal-bg:         #E0F4F5;
+
+    /* KPI accent tops — original colours preserved */
+    --kpi-midnight:    #00182B;
+    --kpi-blue:        #00AFE9;
+    --kpi-teal:        #007E8A;
+    --kpi-amber:       #C67B00;
+    --kpi-green:       #00875A;
+    --kpi-red:         #C8102E;
+    --kpi-violet:      #5C2D91;
+
+    /* Surfaces */
+    --bg-canvas:       #F0F4F8;
+    --bg-surface:      #FFFFFF;
+    --bg-raised:       #FFFFFF;
+    --bg-sidebar:      #00182B;
+    --bg-alt:          #F5F7FA;
+    --bg-hover:        #EBF9FE;
+
+    /* Typography */
+    --text-ink:        #00182B;
+    --text-body:       #2D3F4E;
+    --text-sub:        #4A6073;
+    --text-muted:      #7A96A8;
+    --text-ghost:      #B0C4D4;
+
+    /* Borders */
+    --border-subtle:   #EBF0F5;
+    --border-default:  #D8E3EC;
+    --border-strong:   #B0C4D4;
+    --border-focus:    #00AFE9;
+
+    /* Portal motif — the branded rectangular left-accent */
+    --portal-w:        3px;
+
+    /* Elevation */
+    --e0: none;
+    --e1: 0 1px 3px rgba(0,24,43,0.06), 0 0 0 1px rgba(0,24,43,0.04);
+    --e2: 0 3px 8px rgba(0,24,43,0.08), 0 1px 3px rgba(0,24,43,0.05);
+    --e3: 0 8px 24px rgba(0,24,43,0.12), 0 2px 6px rgba(0,24,43,0.06);
+    --e4: 0 16px 40px rgba(0,24,43,0.16), 0 4px 10px rgba(0,24,43,0.08);
+
+    /* Radius */
+    --r2: 2px; --r4: 4px; --r6: 6px; --r8: 8px;
+    --r12: 12px; --r16: 16px; --r24: 24px;
+
+    /* Fonts */
+    --ff: 'Inter', 'Segoe UI', -apple-system, sans-serif;
+    --fm: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BASE RESET & CANVAS
+───────────────────────────────────────────────────────────── */
+html, body, [class*="css"] {
+    font-family: var(--ff) !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+}
+
+.stApp {
+    background: var(--bg-canvas) !important;
+}
+
+.main .block-container {
+    padding: 0 !important;
+    max-width: 100% !important;
+    background: var(--bg-canvas) !important;
+}
+
+/* Inner content wrapper breathing room */
+.main .block-container > div {
+    padding: 1.6rem 2rem 3rem !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SIDEBAR  — Midnight Blueprint shell
+───────────────────────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background: var(--bg-sidebar) !important;
+    border-right: 1px solid rgba(0,175,233,0.10) !important;
+}
+
+[data-testid="stSidebar"] > div:first-child {
+    padding-top: 0 !important;
+}
+
+/* Nuclear white: every text node inside dark sidebar */
+[data-testid="stSidebar"] *:not(button):not(input):not([data-baseweb="tag"]):not(svg):not(path) {
+    color: rgba(255,255,255,0.78) !important;
+}
+
+/* ── File uploader ─────────────────────────────────── */
+[data-testid="stSidebar"] [data-testid="stFileUploader"] {
+    background: rgba(0,175,233,0.06) !important;
+    border: 1.5px dashed rgba(0,175,233,0.32) !important;
+    border-radius: var(--r8) !important;
+    padding: 1rem !important;
+    transition: border-color 0.2s, background 0.2s !important;
+}
+[data-testid="stSidebar"] [data-testid="stFileUploader"]:hover {
+    border-color: var(--active-blue) !important;
+    background: rgba(0,175,233,0.10) !important;
+}
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button,
+[data-testid="stSidebar"] [data-testid="stFileUploader"] button {
+    background: rgba(0,175,233,0.16) !important;
+    border: 1px solid rgba(0,175,233,0.40) !important;
+    color: var(--sky) !important;
+    border-radius: var(--r6) !important;
+    font-size: 0.76rem !important;
+    font-family: var(--ff) !important;
+    font-weight: 500 !important;
+}
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] small,
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] p,
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] span {
+    color: rgba(255,255,255,0.45) !important;
+    font-size: 0.74rem !important;
+}
+[data-testid="stSidebar"] [data-testid="stFileUploaderFileName"] {
+    color: var(--sky) !important;
+    font-family: var(--fm) !important;
+    font-size: 0.72rem !important;
+}
+
+/* ── Convert to USD toggle ─────────────────────────── */
+[data-testid="stSidebar"] [data-testid="stToggle"] {
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: var(--r8) !important;
+    padding: 0.45rem 0.7rem !important;
+}
+[data-testid="stSidebar"] [data-testid="stToggle"] label,
+[data-testid="stSidebar"] [data-testid="stToggle"] p,
+[data-testid="stSidebar"] .stToggle label {
+    color: rgba(255,255,255,0.92) !important;
+    font-family: var(--ff) !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+}
+[data-testid="stSidebar"] [data-testid="stToggle"] [role="switch"][aria-checked="true"] {
+    background-color: var(--active-blue) !important;
+}
+
+/* ── Multiselect ───────────────────────────────────── */
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] > div > div {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: var(--r6) !important;
+    color: rgba(255,255,255,0.88) !important;
+    transition: border-color 0.15s !important;
+}
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] > div > div:focus-within {
+    border-color: var(--active-blue) !important;
+    box-shadow: 0 0 0 2px rgba(0,175,233,0.18) !important;
+}
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] input::placeholder {
+    color: rgba(255,255,255,0.28) !important;
+}
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] span[data-baseweb="tag"] {
+    background: rgba(0,175,233,0.20) !important;
+    border: 1px solid rgba(0,175,233,0.45) !important;
+    color: var(--sky) !important;
+    font-size: 0.69rem !important;
+    font-family: var(--fm) !important;
+    border-radius: var(--r4) !important;
+    font-weight: 500 !important;
+}
+
+/* ── Selectbox ─────────────────────────────────────── */
+[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: var(--r6) !important;
+    color: rgba(255,255,255,0.88) !important;
+}
+[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div:focus-within {
+    border-color: var(--active-blue) !important;
+    box-shadow: 0 0 0 2px rgba(0,175,233,0.18) !important;
+}
+
+/* ── Number inputs ─────────────────────────────────── */
+[data-testid="stSidebar"] [data-testid="stNumberInput"] input {
+    background: rgba(255,255,255,0.07) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    color: var(--sky) !important;
+    border-radius: var(--r6) !important;
+    font-family: var(--fm) !important;
+    font-size: 0.80rem !important;
+    font-weight: 500 !important;
+}
+[data-testid="stSidebar"] [data-testid="stNumberInput"] input:focus {
+    border-color: var(--active-blue) !important;
+    box-shadow: 0 0 0 2px rgba(0,175,233,0.18) !important;
+    outline: none !important;
+}
+[data-testid="stSidebar"] [data-testid="stNumberInput"] button {
+    color: rgba(255,255,255,0.40) !important;
+    background: rgba(255,255,255,0.04) !important;
+    border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SIDEBAR LOGO  — The Blueprint "Portal" treatment
+───────────────────────────────────────────────────────────── */
+.sidebar-logo {
+    background: var(--midnight);
+    border-bottom: 1px solid rgba(0,175,233,0.15);
+    padding: 1.4rem 1.2rem 1.2rem;
+    margin: 0 -1rem 1rem -1rem;
+    position: relative;
+    overflow: hidden;
+}
+/* Portal accent bar — the Blueprint rectangular motif */
+.sidebar-logo::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+    background: var(--active-blue);
+}
+.sidebar-logo .logo-wordmark {
+    font-family: var(--ff);
+    font-size: 1.22rem;
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    line-height: 1;
+    padding-left: 0.5rem;
+}
+.sidebar-logo .logo-cyan-bar {
+    width: 24px;
+    height: 2px;
+    background: var(--active-blue);
+    margin: 7px 0 7px 0.5rem;
+}
+.sidebar-logo .logo-sub {
+    font-family: var(--ff);
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.42);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 400;
+    padding-left: 0.5rem;
+}
+.sidebar-logo .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(0,175,233,0.12);
+    border: 1px solid rgba(0,175,233,0.28);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-family: var(--fm);
+    font-size: 0.58rem;
+    color: var(--active-blue);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 0.75rem;
+    margin-left: 0.5rem;
+    font-weight: 500;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SIDEBAR FILTER LABELS
+───────────────────────────────────────────────────────────── */
+.filter-section-title {
+    font-family: var(--fm) !important;
+    font-size: 0.58rem !important;
+    letter-spacing: 0.22em !important;
+    text-transform: uppercase !important;
+    color: rgba(255,255,255,0.28) !important;
+    margin: 1.2rem 0 0.5rem !important;
+    padding-top: 0.9rem !important;
+    border-top: 1px solid rgba(255,255,255,0.06) !important;
+    display: block !important;
+}
+.filter-label {
+    font-family: var(--fm) !important;
+    font-size: 0.60rem !important;
+    letter-spacing: 0.10em !important;
+    text-transform: uppercase !important;
+    color: rgba(255,255,255,0.40) !important;
+    margin-bottom: 0.20rem !important;
+    margin-top: 0.70rem !important;
+    display: block !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   DATA INFO BAR
+───────────────────────────────────────────────────────────── */
+.data-info-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0,175,233,0.09);
+    border-left: var(--portal-w) solid var(--active-blue);
+    border-radius: 0 var(--r6) var(--r6) 0;
+    padding: 0.42rem 0.85rem;
+    margin: 0.4rem 0 0.8rem;
+    font-family: var(--fm);
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.65);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PAGE TITLE — Blueprint editorial header
+───────────────────────────────────────────────────────────── */
+.page-title-container {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.4rem 1.8rem 1.2rem;
+    margin-bottom: 1.4rem;
+    background: var(--midnight);
+    border-radius: var(--r12);
+    position: relative;
+    overflow: hidden;
+}
+/* Portal left-accent on title bar */
+.page-title-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 4px;
+    background: var(--active-blue);
+}
+/* Subtle Blueprint grid texture top-right */
+.page-title-container::after {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,175,233,0.10) 0%, transparent 70%);
+    pointer-events: none;
+}
+.page-title-container h1 {
+    font-family: var(--ff) !important;
+    font-size: 2.1rem !important;
+    font-weight: 800 !important;
+    color: #FFFFFF !important;
+    letter-spacing: -0.03em !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+.page-title-eyebrow {
+    font-family: var(--fm);
+    font-size: 0.60rem;
+    color: var(--active-blue);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 0.38rem;
+    opacity: 0.90;
+}
+.page-title-tagline {
+    font-family: var(--ff);
+    font-size: 0.76rem;
+    color: rgba(255,255,255,0.48);
+    letter-spacing: 0.02em;
+    margin: 0.3rem 0 0;
+    font-weight: 400;
+}
+.title-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,175,233,0.14);
+    color: var(--sky);
+    border: 1px solid rgba(0,175,233,0.30);
+    font-family: var(--fm);
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-left: auto;
+}
+.title-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--active-blue);
+    border-radius: 50%;
+    animation: pulse-live 1.8s ease-in-out infinite;
+}
+@keyframes pulse-live {
+    0%, 100% { opacity: 1; transform: scale(1);    box-shadow: 0 0 0 0 rgba(0,175,233,0.5); }
+    50%       { opacity: 0.7; transform: scale(0.85); }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   KPI CARDS  — Blueprint elevated card system
+   All accent colours preserved exactly from the original
+───────────────────────────────────────────────────────────── */
+.kpi-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r12);
+    padding: 1rem 1.05rem 0.9rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--e1);
+    transition: box-shadow 0.20s ease, transform 0.20s ease, border-color 0.20s ease;
+    min-height: 90px;
+}
+.kpi-card:hover {
+    box-shadow: var(--e3);
+    transform: translateY(-2px);
+    border-color: var(--border-default);
+}
+/* Portal top-accent stripe */
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--r12) var(--r12) 0 0;
+}
+/* Portal left-accent glow */
+.kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 0; bottom: 0;
+    width: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.kpi-card:hover::after { opacity: 0.6; }
+
+/* ── Accent colours — ALL original values kept ── */
+.kpi-card.blue   ::before, .kpi-card.blue::before   { background: var(--kpi-midnight); }
+.kpi-card.cyan   ::before, .kpi-card.cyan::before   { background: var(--kpi-blue);     }
+.kpi-card.teal   ::before, .kpi-card.teal::before   { background: var(--kpi-teal);     }
+.kpi-card.amber  ::before, .kpi-card.amber::before  { background: var(--kpi-amber);    }
+.kpi-card.green  ::before, .kpi-card.green::before  { background: var(--kpi-green);    }
+.kpi-card.red    ::before, .kpi-card.red::before    { background: var(--kpi-red);      }
+.kpi-card.purple ::before, .kpi-card.purple::before { background: var(--kpi-violet);   }
+
+.kpi-card.blue::after   { background: var(--kpi-midnight); }
+.kpi-card.cyan::after   { background: var(--kpi-blue);     }
+.kpi-card.teal::after   { background: var(--kpi-teal);     }
+.kpi-card.amber::after  { background: var(--kpi-amber);    }
+.kpi-card.green::after  { background: var(--kpi-green);    }
+.kpi-card.red::after    { background: var(--kpi-red);      }
+.kpi-card.purple::after { background: var(--kpi-violet);   }
+
+.kpi-label {
+    font-family: var(--fm) !important;
+    font-size: 0.57rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.14em !important;
+    text-transform: uppercase !important;
+    color: var(--text-muted) !important;
+    margin-bottom: 0.40rem !important;
+    display: block !important;
+}
+.kpi-value {
+    font-family: var(--ff) !important;
+    font-size: 1.42rem !important;
+    font-weight: 800 !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.025em !important;
+}
+.kpi-sub {
+    font-family: var(--fm) !important;
+    font-size: 0.61rem !important;
+    color: var(--text-muted) !important;
+    margin-top: 0.30rem !important;
+    display: block !important;
+    font-weight: 400 !important;
+}
+
+/* ── KPI value colours — original values preserved ── */
+.kpi-card.blue   .kpi-value { color: #00182B !important; }
+.kpi-card.cyan   .kpi-value { color: #007EB8 !important; }
+.kpi-card.teal   .kpi-value { color: #005E68 !important; }
+.kpi-card.amber  .kpi-value { color: #A06300 !important; }
+.kpi-card.green  .kpi-value { color: #005C3E !important; }
+.kpi-card.red    .kpi-value { color: #9C0920 !important; }
+.kpi-card.purple .kpi-value { color: #441F6B !important; }
+
+/* ─────────────────────────────────────────────────────────────
+   SECTION HEADERS  — Portal motif left-accent
+───────────────────────────────────────────────────────────── */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.70rem;
+    margin: 1.8rem 0 1rem;
+    padding: 0.65rem 0.90rem;
+    background: var(--bg-surface);
+    border-radius: var(--r6);
+    border-left: var(--portal-w) solid var(--active-blue);
+    border-top: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    box-shadow: var(--e1);
+}
+.section-header h3 {
+    font-family: var(--ff) !important;
+    font-size: 0.80rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    color: var(--midnight-mid) !important;
+    margin: 0 !important;
+}
+.dot {
+    width: 7px !important;
+    height: 7px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TRADE TABLES  — Blueprint data table
+───────────────────────────────────────────────────────────── */
+.trade-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--ff);
+    font-size: 0.79rem;
+    margin-top: 0.5rem;
+    border-radius: var(--r8);
+    overflow: hidden;
+    box-shadow: var(--e2);
+}
+.trade-table thead th {
+    background: var(--midnight) !important;
+    color: #FFFFFF !important;
+    font-family: var(--fm) !important;
+    font-size: 0.61rem !important;
+    letter-spacing: 0.11em !important;
+    text-transform: uppercase !important;
+    padding: 0.65rem 0.75rem !important;
+    text-align: right !important;
+    border: none !important;
+    white-space: nowrap !important;
+    font-weight: 600 !important;
+}
+.trade-table thead th:first-child { text-align: left !important; }
+/* Portal accent on first header column */
+.trade-table thead th:first-child {
+    border-left: var(--portal-w) solid var(--active-blue) !important;
+    padding-left: calc(0.75rem + var(--portal-w)) !important;
+}
+.trade-table td {
+    padding: 0.42rem 0.75rem !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    text-align: right !important;
+    color: var(--text-body) !important;
+    transition: background 0.10s !important;
+}
+.trade-table td:first-child {
+    text-align: left !important;
+    color: var(--text-sub) !important;
+    font-weight: 500 !important;
+}
+.trade-table tr:hover td {
+    background: var(--active-blue-10) !important;
+}
+.trade-table tr:nth-child(even) td {
+    background: var(--stone-100);
+}
+.trade-table tr:nth-child(even):hover td {
+    background: var(--active-blue-10) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EMPTY STATE
+───────────────────────────────────────────────────────────── */
+.empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    background: var(--bg-surface);
+    border-radius: var(--r16);
+    border: 2px dashed var(--border-default);
+    margin: 2rem 0;
+    box-shadow: var(--e1);
+}
+.empty-state h3 {
+    font-family: var(--ff) !important;
+    font-size: 1.10rem !important;
+    color: var(--midnight-mid) !important;
+    font-weight: 700 !important;
+    margin-bottom: 0.5rem !important;
+}
+.empty-state p {
+    font-family: var(--fm) !important;
+    font-size: 0.74rem !important;
+    color: var(--text-muted) !important;
+    line-height: 1.7 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TABS  — Blueprint navigation
+───────────────────────────────────────────────────────────── */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    background: var(--bg-surface) !important;
+    border-bottom: 1px solid var(--border-default) !important;
+    gap: 0 !important;
+    padding: 0 0.6rem !important;
+    border-radius: var(--r8) var(--r8) 0 0 !important;
+    box-shadow: var(--e1) !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
+    font-family: var(--ff) !important;
+    font-size: 0.79rem !important;
+    font-weight: 500 !important;
+    color: var(--text-muted) !important;
+    padding: 0.72rem 1.2rem !important;
+    border-bottom: 2px solid transparent !important;
+    background: transparent !important;
+    transition: color 0.15s, background 0.15s !important;
+    letter-spacing: 0.01em !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+    color: var(--midnight-mid) !important;
+    background: var(--stone-100) !important;
+}
+[data-testid="stTabs"] [aria-selected="true"] {
+    color: var(--active-blue) !important;
+    border-bottom-color: var(--active-blue) !important;
+    background: var(--bg-surface) !important;
+    font-weight: 700 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BUTTONS  — Blueprint CTA system
+───────────────────────────────────────────────────────────── */
+[data-testid="stDownloadButton"] button {
+    background: var(--midnight) !important;
+    border: 1px solid var(--midnight) !important;
+    color: white !important;
+    font-family: var(--ff) !important;
+    font-size: 0.77rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.03em !important;
+    padding: 0.54rem 1rem !important;
+    border-radius: var(--r6) !important;
+    box-shadow: var(--e1) !important;
+    width: 100% !important;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.15s !important;
+}
+[data-testid="stDownloadButton"] button:hover {
+    background: var(--navy-surface) !important;
+    box-shadow: var(--e2) !important;
+    transform: translateY(-1px) !important;
+}
+[data-testid="stDownloadButton"] button:active {
+    transform: translateY(0) !important;
+}
+button[data-testid="baseButton-secondary"] {
+    background: transparent !important;
+    border: 1px solid var(--border-focus) !important;
+    color: var(--active-blue) !important;
+    font-family: var(--ff) !important;
+    font-size: 0.77rem !important;
+    font-weight: 600 !important;
+    padding: 0.54rem 1rem !important;
+    border-radius: var(--r6) !important;
+    transition: background 0.15s, box-shadow 0.15s !important;
+}
+button[data-testid="baseButton-secondary"]:hover {
+    background: var(--active-blue-10) !important;
+    box-shadow: 0 0 0 3px rgba(0,175,233,0.12) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   DATAFRAME
+───────────────────────────────────────────────────────────── */
+[data-testid="stDataFrame"] {
+    border: 1px solid var(--border-default) !important;
+    border-radius: var(--r12) !important;
+    overflow: hidden !important;
+    box-shadow: var(--e2) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EXPANDERS  — Blueprint card with Portal accent
+───────────────────────────────────────────────────────────── */
+[data-testid="stExpander"] {
+    border: 1px solid var(--border-subtle) !important;
+    border-left: var(--portal-w) solid transparent !important;
+    border-radius: var(--r8) !important;
+    box-shadow: var(--e1) !important;
+    margin-bottom: 0.38rem !important;
+    background: var(--bg-surface) !important;
+    overflow: hidden !important;
+    transition: border-left-color 0.15s, box-shadow 0.15s !important;
+}
+[data-testid="stExpander"]:hover {
+    border-left-color: var(--active-blue) !important;
+    box-shadow: var(--e2) !important;
+}
+[data-testid="stExpander"][open] {
+    border-left-color: var(--active-blue) !important;
+    box-shadow: var(--e2) !important;
+}
+[data-testid="stExpander"] summary {
+    font-family: var(--ff) !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    color: var(--midnight-mid) !important;
+    padding: 0.68rem 1rem !important;
+    background: var(--stone-100) !important;
+    transition: background 0.12s !important;
+}
+[data-testid="stExpander"] summary:hover {
+    background: var(--active-blue-10) !important;
+}
+[data-testid="stExpander"][open] summary {
+    background: var(--active-blue-10) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    color: var(--midnight) !important;
+}
+[data-testid="stExpander"] .streamlit-expanderContent {
+    padding: 0.80rem 1rem !important;
+    background: var(--bg-surface) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN AREA FORM CONTROLS
+───────────────────────────────────────────────────────────── */
+.main [data-testid="stSelectbox"] > div > div {
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border-default) !important;
+    border-radius: var(--r6) !important;
+    color: var(--text-body) !important;
+    font-family: var(--ff) !important;
+    font-size: 0.82rem !important;
+    transition: border-color 0.15s !important;
+}
+.main [data-testid="stSelectbox"] > div > div:focus-within {
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 2px rgba(0,175,233,0.14) !important;
+}
+.main [data-testid="stTextInput"] input {
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border-default) !important;
+    border-radius: var(--r6) !important;
+    color: var(--text-body) !important;
+    font-family: var(--ff) !important;
+    font-size: 0.82rem !important;
+    padding: 0.50rem 0.75rem !important;
+    transition: border-color 0.15s !important;
+}
+.main [data-testid="stTextInput"] input:focus {
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 2px rgba(0,175,233,0.14) !important;
+    outline: none !important;
+}
+.main [data-testid="stTextInput"] input::placeholder {
+    color: var(--text-ghost) !important;
+}
+[data-testid="stCheckbox"] label {
+    font-family: var(--ff) !important;
+    font-size: 0.80rem !important;
+    color: var(--text-body) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FX / BENCHMARK PANEL HEADERS
+───────────────────────────────────────────────────────────── */
+.panel-subheader {
+    font-family: var(--fm);
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--midnight-mid);
+    text-align: center;
+    background: var(--active-blue-10);
+    border: 1px solid var(--ice);
+    border-left: var(--portal-w) solid var(--active-blue);
+    border-radius: 0 var(--r4) var(--r4) 0;
+    padding: 0.44rem 0.6rem;
+    margin-bottom: 0.65rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TABLE WRAPPERS
+───────────────────────────────────────────────────────────── */
+.hier-table-wrapper,
+.kpi-table-container {
+    background: var(--bg-surface);
+    border-radius: var(--r8);
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--e2);
+    margin-bottom: 0.9rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   DIVIDER
+───────────────────────────────────────────────────────────── */
+.bar-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.07);
+    margin: 0.9rem 0;
+    border: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SCROLLBAR  — Blueprint minimal
+───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar               { width: 4px; height: 4px; }
+::-webkit-scrollbar-track         { background: transparent; }
+::-webkit-scrollbar-thumb         { background: var(--stone-300); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover   { background: var(--active-blue); }
+
+/* ─────────────────────────────────────────────────────────────
+   SELECTION HIGHLIGHT
+───────────────────────────────────────────────────────────── */
+::selection {
+    background: rgba(0,175,233,0.20);
+    color: var(--midnight);
+}
+</style>
+""", unsafe_allow_html=True)
